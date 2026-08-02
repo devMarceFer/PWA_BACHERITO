@@ -7,6 +7,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AsignarGrupoService } from '../../admin/asignar-grupo/asignar-grupo.service';
 import { ReporteService } from '../../../core/services/reporte.service';
 import { SyncService } from '../../../core/db/services/sync.service';
+import { MisTareasService } from '../../../core/services/mis-tareas.service';
 
 @Component({
   selector: 'app-panel-admin',
@@ -24,14 +25,17 @@ export class PanelAdminComponent implements OnInit {
   private asignarGrupoService = inject(AsignarGrupoService);
   private reporteService = inject(ReporteService);
   private syncService = inject(SyncService);
+  private misTareasService = inject(MisTareasService);
 
   cargando = signal(false);
   totalHuecos = signal(0);
   pendientes = signal(0);
   enProgreso = signal(0);
   resueltos = signal(0);
-  // Baches reportados por este admin mientras estaba offline, aún sin subir al servidor
-  // (mismo mecanismo que el panel del técnico: reportesOff en IndexedDB).
+  // Total de pendientes por sincronizar de este dispositivo: baches reportados offline (reportesOff)
+  // + cambios de estado que quedaron en cola sin llegar al servidor (tareasTecnicoOff.pendienteSubir).
+  // Antes solo contaba reportes, así que la barra podía decir "Todo sincronizado" con respuestas de
+  // "Atendido"/"Mantenimiento" sin enviar (mismo bug ya corregido en panel-tecnico).
   pendientesSincronizar = signal(0);
   subiendoReporte = signal(false);
 
@@ -63,7 +67,11 @@ export class PanelAdminComponent implements OnInit {
   }
 
   private async actualizarPendientesSincronizar() {
-    this.pendientesSincronizar.set(await this.reporteService.contarPendientesSincronizacion());
+    const [reportesPendientes, respuestasPendientes] = await Promise.all([
+      this.reporteService.contarPendientesSincronizacion(),
+      this.misTareasService.contarRespuestasPendientes()
+    ]);
+    this.pendientesSincronizar.set(reportesPendientes + respuestasPendientes);
   }
 
   private cargarResumen() {

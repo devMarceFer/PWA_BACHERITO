@@ -106,6 +106,7 @@ export class SincronizacionService {
   // Borra los datos del dispositivo. No cierra la sesión (el JWT vive en localStorage) ni toca
   // el caché del service worker: la app sigue instalada y abriendo sin conexión.
   async borrarCache(): Promise<{ ok: boolean; mensaje: string }> {
+    this._ocupado.set(true);
     try {
       await dbLocal.reportesOff.clear();
       await dbLocal.tareasTecnicoOff.clear();
@@ -116,6 +117,7 @@ export class SincronizacionService {
       console.error('No se pudo borrar la caché del dispositivo:', error);
       return { ok: false, mensaje: 'No se pudo borrar la caché. Intenta de nuevo.' };
     } finally {
+      this._ocupado.set(false);
       await this.refrescarContadoresSeguro();
     }
   }

@@ -215,7 +215,7 @@
   </div>
 }
 
-<!-- Segunda confirmación (solo con pendientes): restata lo que se va a perder y exige una
+<!-- Segunda confirmación (solo con pendientes): reitera lo que se va a perder y exige una
      confirmación explícita adicional antes de ejecutar borrarCache(). -->
 @if (confirmandoBorradoFinal()) {
   <div class="fixed inset-0 z-[500] flex items-center justify-center px-6">
@@ -245,7 +245,8 @@
         <button
           type="button"
           (click)="confirmarBorrado()"
-          class="flex-1 rounded-xl bg-danger px-4 py-3 text-sm font-semibold text-white transition-all active:scale-[0.98]">
+          [disabled]="ocupado()"
+          class="flex-1 rounded-xl bg-danger px-4 py-3 text-sm font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-50">
           Sí, borrar todo
         </button>
       </div>

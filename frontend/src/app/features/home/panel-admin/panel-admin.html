@@ -45,7 +45,7 @@
   </card>
 </div>
 
-<!-- Barra de sincronización: baches que este admin reportó sin conexión y aún no se suben -->
+<!-- Barra de sincronización: baches reportados y cambios de estado hechos sin conexión que aún no se suben -->
 <div
   class="flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 mt-5"
   [class.bg-success-bg]="pendientesSincronizar() === 0"
@@ -64,7 +64,7 @@
       @if (pendientesSincronizar() === 0) {
         Todo sincronizado correctamente
       } @else {
-        Tienes {{ pendientesSincronizar() }} {{ pendientesSincronizar() === 1 ? 'bache reportado' : 'baches reportados' }}
+        Tienes {{ pendientesSincronizar() }} {{ pendientesSincronizar() === 1 ? 'elemento sin enviar' : 'elementos sin enviar' }}
       }
     </span>
   </div>
