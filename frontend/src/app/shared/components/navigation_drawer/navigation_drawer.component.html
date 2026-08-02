@@ -1,0 +1,114 @@
+@if (abierto) {
+  <!-- z-[600]: por encima de cualquier overlay de página (leyendas/FAB en z-[400], spinners en
+  z-[450], modales de confirmación en z-[500]), para que el menú siempre tape todo lo de abajo. -->
+  <div class="fixed inset-0 z-[600] flex">
+
+    <!-- Fondo semitransparente: cierra el drawer al hacer clic fuera -->
+    <div
+      class="absolute inset-0 bg-black/40 animate-fadeIn"
+      (click)="cerrar()"
+      aria-hidden="true">
+    </div>
+
+    <!-- Panel del drawer -->
+    <aside class="relative z-10 flex h-full w-[78%] max-w-[300px] flex-col bg-surface shadow-2xl animate-slide-in-left">
+
+      <!-- Cabecera con datos de la cuenta -->
+      <div class="relative shrink-0 bg-primary px-5 pb-10 pt-8">
+        <button
+          (click)="cerrar()"
+          class="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full text-on-primary transition-all hover:bg-white/10 active:scale-95"
+          aria-label="Cerrar menú">
+          <mat-icon class="!text-xl">close</mat-icon>
+        </button>
+
+        <div class="flex items-center gap-3 pr-8">
+          <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/15 text-on-primary">
+            <mat-icon class="!text-3xl !h-8 !w-8">person</mat-icon>
+          </div>
+          <div class="flex min-w-0 flex-col gap-1.5">
+            <span class="truncate text-sm font-bold text-on-primary">{{ nombreUsuario }}</span>
+            <span class="w-fit rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-medium text-on-primary">
+              Funcionario municipal
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Menú de navegación -->
+      <nav class="relative -mt-6 flex flex-1 flex-col overflow-y-auto rounded-t-[28px] bg-surface px-3 pt-6">
+        <p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+          Menú
+        </p>
+
+        <a
+          routerLink="/home"
+          routerLinkActive="bg-primary-soft !text-primary font-bold"
+          [routerLinkActiveOptions]="{ exact: true }"
+          (click)="cerrar()"
+          class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-text-muted transition-all duration-150 hover:bg-surface-alt active:scale-[0.98]">
+          <mat-icon class="!text-xl !h-5 !w-5">home</mat-icon>
+          Home
+        </a>
+
+        @if (tieneAccesoBacherito) {
+          <a
+            routerLink="/reporta"
+            routerLinkActive="bg-primary-soft !text-primary font-bold"
+            (click)="cerrar()"
+            class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-text-muted transition-all duration-150 hover:bg-surface-alt active:scale-[0.98]">
+            <mat-icon class="!text-xl !h-5 !w-5">location_on</mat-icon>
+            Bacherito
+          </a>
+        }
+
+        @if (tieneAccesoMisTareas) {
+          <a
+            routerLink="/mis-tareas"
+            routerLinkActive="bg-primary-soft !text-primary font-bold"
+            (click)="cerrar()"
+            class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-text-muted transition-all duration-150 hover:bg-surface-alt active:scale-[0.98]">
+            <mat-icon class="!text-xl !h-5 !w-5">assignment</mat-icon>
+            Mis Tareas
+          </a>
+        }
+
+        <a
+          routerLink="/perfil"
+          routerLinkActive="bg-primary-soft !text-primary font-bold"
+          (click)="cerrar()"
+          class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-text-muted transition-all duration-150 hover:bg-surface-alt active:scale-[0.98]">
+          <mat-icon class="!text-xl !h-5 !w-5">person</mat-icon>
+          Perfil
+        </a>
+
+        <a
+          routerLink="/ayuda"
+          routerLinkActive="bg-primary-soft !text-primary font-bold"
+          (click)="cerrar()"
+          class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-text-muted transition-all duration-150 hover:bg-surface-alt active:scale-[0.98]">
+          <mat-icon class="!text-xl !h-5 !w-5">shield</mat-icon>
+          Ayuda
+        </a>
+
+        @if (tieneAccesoAsignarGrupo) {
+          <p class="px-3 pb-2 pt-4 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+            Administración
+          </p>
+
+          <a
+            routerLink="/admin/grupos"
+            routerLinkActive="bg-primary-soft !text-primary font-bold"
+            (click)="cerrar()"
+            class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-text-muted transition-all duration-150 hover:bg-surface-alt active:scale-[0.98]">
+            <mat-icon class="!text-xl !h-5 !w-5">groups</mat-icon>
+            Asignar Grupo
+          </a>
+        }
+
+        <div class="flex-1"></div>
+      </nav>
+
+    </aside>
+  </div>
+}

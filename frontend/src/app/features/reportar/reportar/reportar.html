@@ -1,0 +1,160 @@
+<div class="min-h-screen w-full flex flex-col bg-bg select-none pb-8">
+
+  <app-toolbar [titulo]="'Reportar un bache'" [mostrarBotonAtras]="true"></app-toolbar>
+
+  <form class="flex flex-col gap-6 p-5 max-w-md mx-auto w-full" (ngSubmit)="enviarReporte()">
+
+    <div class="flex flex-col gap-2">
+      <label for="usuario" class="text-2xs text-text-muted">
+        Parroquia *
+      </label>
+      <div class="relative flex items-center">
+        <select
+          [ngModel]="parroquiaSeleccionada()"
+          (ngModelChange)="parroquiaSeleccionada.set($event)"
+          name="parroquia"
+          class="w-full appearance-none rounded-xl border border-border bg-surface px-4 py-3.5 text-sm text-text outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15"
+          required>
+          <option value="" disabled selected>Selecciona la parroquia</option>
+          @for (parroquia of parroquias(); track parroquia.codigo) {
+            <option [value]="parroquia.codigo">{{ parroquia.nombre }}</option>
+          }
+        </select>
+        <mat-icon class="absolute right-3.5 text-text-muted pointer-events-none !text-xl !h-5 !w-5">expand_more</mat-icon>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="usuario" class="text-2xs text-text-muted">
+        Fotografía del bache
+      </label>
+      <div
+        (click)="fileInput.click()"
+        class="flex flex-col items-center justify-center min-h-[150px] cursor-pointer rounded-2xl border-2 border-dashed border-border bg-surface-alt p-5 text-center transition-all duration-200 hover:border-primary">
+
+        @if (!imagenPreview()) {
+          <mat-icon class="text-text-muted !text-4xl !h-10 !w-10 mb-2">add_photo_alternate</mat-icon>
+          <p class="text-xs font-medium text-text-muted">Tomar foto o seleccionar imagen</p>
+        } @else {
+          <img [src]="imagenPreview()" alt="Vista previa del bache" class="w-full max-h-[200px] object-cover rounded-xl shadow-sm">
+        }
+        <input #fileInput type="file" accept="image/*" (change)="onFileSelected($event)" class="hidden">
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-3">
+      <label for="usuario" class="text-2xs text-text-muted">
+        Ubicación del bache *
+      </label>
+
+      <button
+        type="button"
+        (click)="obtenerUbicacionActual()"
+        class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-semibold text-white shadow-md shadow-emerald-600/10 transition-all duration-200 hover:bg-emerald-700 active:scale-[0.98]">
+        <mat-icon class="!text-lg !h-5 !w-5">near_me</mat-icon>
+        Usar mi ubicación
+      </button>
+
+      <div class="flex gap-2">
+        <input
+          type="text"
+          [ngModel]="busquedaDireccion()"
+          (ngModelChange)="busquedaDireccion.set($event)"
+          name="busqueda"
+          placeholder="Buscar calle o dirección..."
+          class="flex-1 rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder-text-muted outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15">
+        <button
+          type="button"
+          (click)="buscarDireccion()"
+          class="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-surface-alt text-text transition-all duration-150 hover:bg-border active:scale-95">
+          <mat-icon class="!text-xl">search</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Calle detectada bajo el marcador (geocodificación inversa) -->
+    <div class="flex items-center gap-2 rounded-xl bg-success-bg px-4 py-3 text-sm font-medium text-success">
+      <mat-icon class="!text-lg !h-5 !w-5 shrink-0">location_on</mat-icon>
+      <span class="truncate">{{ calleDetectada() || 'Ubica el bache en el mapa para detectar la calle' }}</span>
+    </div>
+
+    <!-- Contenedor del Mapa Real con Leaflet -->
+    <div class="rounded-2xl border border-border bg-surface overflow-hidden shadow-md">
+      <div id="mapa-reporte" class="h-[280px] w-full z-10"></div>
+    </div>
+
+    <button
+      type="submit"
+      class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-4 text-base font-bold text-white shadow-lg shadow-emerald-600/15 transition-all duration-200 hover:bg-emerald-700 active:scale-[0.98] mt-2">
+      <mat-icon class="!text-xl !h-5 !w-5">send</mat-icon>
+      Enviar Reporte
+    </button>
+
+  </form>
+
+  <!-- Popup: confirmación de reporte enviado, tanto en línea como guardado sin conexión -->
+  @if (reporteConfirmado(); as reporte) {
+    <div
+      class="fixed inset-0 z-[500] flex items-end justify-center bg-black/50 animate-fadeIn"
+      (click)="cerrarPopupConfirmacion()">
+      <div
+        class="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-t-[28px] bg-surface p-6 shadow-2xl animate-slide-in-up"
+        (click)="$event.stopPropagation()">
+
+        <div class="mb-1 flex items-center justify-between">
+          <h3 class="text-lg font-bold text-text">{{ reporte.offline ? 'Guardado sin conexión' : '¡Bache reportado!' }}</h3>
+          <button
+            type="button"
+            (click)="cerrarPopupConfirmacion()"
+            class="flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-alt"
+            aria-label="Cerrar">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        <p class="mb-4 text-sm text-text-muted">
+          @if (reporte.offline) {
+            Tu bache ha sido reportado de manera offline. Se subirá automáticamente cuando vuelva la conexión.
+          } @else {
+            Tu bache ha sido reportado de manera online y ya está registrado en el sistema.
+          }
+        </p>
+
+        @if (reporte.fotografia) {
+          <img [src]="reporte.fotografia" alt="Foto del bache" class="mb-4 max-h-[180px] w-full rounded-xl object-cover shadow-sm">
+        }
+
+        <div class="mb-4 flex flex-col gap-2.5 rounded-xl border border-border bg-surface-alt p-4 text-sm">
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-text-muted">Parroquia</span>
+            <span class="font-medium text-text">{{ nombreParroquia(reporte.parroquia) }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-text-muted">Coordenadas</span>
+            <span class="font-medium text-text">{{ reporte.coordenadaX }}, {{ reporte.coordenadaY }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-text-muted">Fecha</span>
+            <span class="font-medium text-text">{{ reporte.fechaIngreso | date:'medium' }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-text-muted">Estado</span>
+            @if (reporte.offline) {
+              <span class="font-medium text-warning">Pendiente de sincronizar</span>
+            } @else {
+              <span class="font-medium text-success">Sincronizado</span>
+            }
+          </div>
+        </div>
+
+        <button
+          type="button"
+          (click)="cerrarPopupConfirmacion()"
+          class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-semibold text-white shadow-md shadow-emerald-600/10 transition-all duration-200 hover:bg-emerald-700 active:scale-[0.98]">
+          Entendido
+        </button>
+
+      </div>
+    </div>
+  }
+</div>

@@ -1,16 +1,13 @@
 import authService from '../services/auth.service.js';
 import { UsuarioModel } from '../models/usuario.model.js';
-
-function extraerBearer(req) {
-    const header = req.headers.authorization || '';
-    return header.startsWith('Bearer ') ? header.slice(7) : null;
-}
+import { extraerBearer } from '../utils/bearer.util.js';
 
 class AuthController {
     async registrarCognito(req, res, next) {
         try {
             const datos = {
                 correo: (req.body.correo || '').trim().toLowerCase(),
+                cedula: (req.body.cedula || '').trim(),
                 nombre: (req.body.nombre || '').trim(),
                 apellido: (req.body.apellido || '').trim()
             };
@@ -25,6 +22,12 @@ class AuthController {
             const message = usuario.creado ? 'Usuario registrado correctamente.' : 'El usuario ya estaba registrado.';
             return res.status(status).json({ success: true, message, data: usuario });
         } catch (error) {
+            if (error.message === 'NO_ES_FUNCIONARIO') {
+                return res.status(403).json({ success: false, message: 'Solo funcionarios municipales pueden registrarse en esta aplicación.' });
+            }
+            if (error.message === 'CEDULA_YA_REGISTRADA') {
+                return res.status(409).json({ success: false, message: 'Esta cédula ya tiene una cuenta registrada con otro correo.' });
+            }
             next(error);
         }
     }
@@ -46,6 +49,12 @@ class AuthController {
         } catch (error) {
             if (error.message === 'SIN_ACCESO_SATELITE') {
                 return res.status(403).json({ success: false, message: 'El usuario no tiene acceso a esta aplicación.' });
+            }
+            if (error.message === 'SOLO_FUNCIONARIOS') {
+                return res.status(403).json({ success: false, message: 'Esta aplicación es exclusiva para funcionarios municipales.' });
+            }
+            if (error.message === 'SIN_MODULOS_ASIGNADOS') {
+                return res.status(403).json({ success: false, message: 'Tu cuenta no tiene módulos asignados. Contacta al administrador.' });
             }
             if (error.message === 'USUARIO_BLOQUEADO') {
                 return res.status(403).json({ success: false, message: 'El usuario se encuentra bloqueado.' });

@@ -6,6 +6,8 @@ import parroquiaRoutes from './routes/parroquia.routes.js';
 import requerimientoRoutes from './routes/requerimiento.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import funcionarioRoutes from './routes/funcionario.routes.js';
+import grupoRoutes from './routes/grupo.routes.js';
+import mistareaRoutes from './routes/mistarea.routes.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 import 'dotenv/config';
 
@@ -28,6 +30,8 @@ app.use('/api', parroquiaRoutes);
 app.use('/api', requerimientoRoutes);
 app.use('/api', authRoutes);
 app.use('/api', funcionarioRoutes);
+app.use('/api', grupoRoutes);
+app.use('/api', mistareaRoutes);
 
 // El Middleware de errores SIEMPRE debe ir después de definir todas las rutas
 app.use(errorHandler);

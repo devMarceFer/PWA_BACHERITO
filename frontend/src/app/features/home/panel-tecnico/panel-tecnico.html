@@ -1,0 +1,127 @@
+<!-- Encabezado del panel -->
+<div class="flex items-start justify-between gap-3">
+  <div class="min-w-0 mb-5">
+    <h2 class="text-xl font-extrabold text-text">Panel de Control Tecnico</h2>
+    <p class="text-sm text-text-muted mt-0.5 truncate">Hola, {{ nombreTecnico }}</p>
+  </div>
+  @if (mostrarBotonDescarga()) {
+    <button
+      type="button"
+      (click)="descargarTareas()"
+      [disabled]="descargandoTareas()"
+      class="flex shrink-0 items-center gap-1.5 rounded-full bg-danger px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-all active:scale-95 disabled:opacity-70">
+      <mat-icon class="!text-base !h-4 !w-4" [class.animate-spin]="descargandoTareas()">{{ descargandoTareas() ? 'sync' : 'download' }}</mat-icon>
+      {{ descargandoTareas() ? 'Espera, descargando...' : 'Descargar Tareas' }}
+    </button>
+  }
+</div>
+
+<!-- Conteos -->
+<div class="grid grid-cols-2 gap-4">
+  <card>
+    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600 dark:bg-teal-950/20 dark:text-teal-400">
+      <mat-icon class="!text-xl">location_on</mat-icon>
+    </div>
+    <p class="mt-3 text-2xl font-extrabold text-text">{{ tareasTotal() }}</p>
+    <p class="text-xs text-text-muted">Total Huecos</p>
+  </card>
+
+  <card>
+    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400">
+      <mat-icon class="!text-xl">schedule</mat-icon>
+    </div>
+    <p class="mt-3 text-2xl font-extrabold text-text">{{ huecosPendientes() }}</p>
+    <p class="text-xs text-text-muted">Pendientes</p>
+  </card>
+
+  <card>
+    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400">
+      <mat-icon class="!text-xl">timeline</mat-icon>
+    </div>
+    <p class="mt-3 text-2xl font-extrabold text-text">{{ huecosEnProgreso() }}</p>
+    <p class="text-xs text-text-muted">En Progreso</p>
+  </card>
+
+  <card>
+    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-success-bg text-success">
+      <mat-icon class="!text-xl">check_circle</mat-icon>
+    </div>
+    <p class="mt-3 text-2xl font-extrabold text-text">{{ huecosResueltos() }}</p>
+    <p class="text-xs text-text-muted">Resueltos</p>
+  </card>
+</div>
+
+<!-- Barra de sincronización -->
+<div
+  class="flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 mt-5 mb-5"
+  [class.bg-success-bg]="pendientesSincronizar() === 0"
+  [class.bg-danger-bg]="pendientesSincronizar() > 0">
+  <div class="flex items-center gap-2.5">
+    <mat-icon
+      class="!text-xl"
+      [class.text-success]="pendientesSincronizar() === 0"
+      [class.text-danger]="pendientesSincronizar() > 0">
+      {{ pendientesSincronizar() === 0 ? 'cloud_done' : 'sync_problem' }}
+    </mat-icon>
+    <span
+      class="text-sm font-semibold"
+      [class.text-success]="pendientesSincronizar() === 0"
+      [class.text-danger]="pendientesSincronizar() > 0">
+      @if (pendientesSincronizar() === 0) {
+        Todo sincronizado correctamente
+      } @else {
+        Tienes {{ pendientesSincronizar() }} {{ pendientesSincronizar() === 1 ? 'bache reportado' : 'baches reportados' }}
+      }
+    </span>
+  </div>
+  @if (pendientesSincronizar() > 0) {
+    <button
+      type="button"
+      (click)="subirReporte()"
+      [disabled]="subiendoReporte()"
+      class="shrink-0 text-xs font-bold text-danger underline-offset-2 hover:underline disabled:opacity-60">
+      {{ subiendoReporte() ? 'Subiendo...' : 'Subir ahora' }}
+    </button>
+  }
+</div>
+
+<!-- Tareas pendientes -->
+<div class="flex items-center justify-between mt-2 mb-2">
+  <h3 class="text-base font-bold text-text">Tareas Pendientes</h3>
+  <button type="button" (click)="irAMisTareas()" class="flex items-center gap-1 text-sm font-semibold text-success">
+    Ver todas
+    <mat-icon class="!text-base !h-4 !w-4">arrow_forward</mat-icon>
+  </button>
+</div>
+
+@if (tareasPendientesPreview().length === 0) {
+  <card class="block">
+    <p class="text-center text-sm text-text-muted py-2">No tienes actividades pendientes</p>
+  </card>
+} @else {
+  <div class="flex flex-col gap-2.5">
+    @for (tarea of tareasPendientesPreview(); track tarea.idRequerimiento) {
+      <card class="block">
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0 flex-1 text-left">
+            <p class="text-sm font-bold text-text truncate">{{ tarea.nombre }}</p>
+            <p class="text-xs text-text-muted mt-0.5 truncate">
+              @if (tarea.parroquia) {
+                {{ tarea.parroquia }} ·
+              }
+              Reportado {{ tarea.fechaIngreso | date:'dd/MM/yyyy' }}
+            </p>
+          </div>
+          <span
+            class="shrink-0 rounded-full px-2.5 py-1 text-2xs font-semibold"
+            [class.bg-danger-bg]="tarea.estadoCodigo !== 'E'"
+            [class.text-danger]="tarea.estadoCodigo !== 'E'"
+            [class.bg-warning-bg]="tarea.estadoCodigo === 'E'"
+            [class.text-warning]="tarea.estadoCodigo === 'E'">
+            {{ tarea.estadoLabel }}
+          </span>
+        </div>
+      </card>
+    }
+  </div>
+}

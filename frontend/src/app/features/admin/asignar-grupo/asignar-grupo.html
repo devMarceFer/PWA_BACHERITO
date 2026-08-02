@@ -1,0 +1,190 @@
+<div class="min-h-screen w-full flex flex-col bg-bg select-none">
+
+  <app-toolbar [titulo]="'Asignar Grupo'" [mostrarBotonMenu]="true" (menuClick)="menuAbierto.set(true)"></app-toolbar>
+
+  <div class="flex-1 overflow-y-auto px-4 py-6 box-border">
+    <div class="w-full max-w-2xl mx-auto flex flex-col gap-4">
+
+      <div class="flex items-center justify-between gap-3">
+        <p class="text-sm text-text-muted">
+          Grupos de técnicos del Bacherito.
+        </p>
+        <app-button type="button" variant="primary" (btnClick)="abrirModal()">
+          Crear Grupo
+        </app-button>
+      </div>
+
+      @if (cargandoGrupos()) {
+        <p class="text-center text-sm text-text-muted py-8">Cargando grupos...</p>
+      } @else if (grupos().length === 0) {
+        <p class="text-center text-sm text-text-muted py-8">Todavía no se ha creado ningún grupo.</p>
+      } @else {
+        <div class="overflow-x-auto rounded-2xl border border-border bg-surface">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-border text-left text-2xs uppercase tracking-wide text-text-muted">
+                <th class="px-4 py-3 font-semibold">Nombre</th>
+                <th class="px-4 py-3 font-semibold">Progreso</th>
+                <th class="px-4 py-3 font-semibold">Técnicos</th>
+                <th class="px-4 py-3 font-semibold">Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (grupo of grupos(); track grupo.idGrupo) {
+                <tr
+                  (click)="irADetalle(grupo.idGrupo)"
+                  class="cursor-pointer border-b border-border transition-colors last:border-0 hover:bg-surface-alt">
+                  <td class="px-4 py-3 font-semibold text-primary">{{ grupo.nombre }}</td>
+                  <td class="px-4 py-3">
+                    <div class="flex flex-col gap-1 min-w-[140px]">
+                      <div class="h-1.5 w-full overflow-hidden rounded-full bg-surface-alt">
+                        <div
+                          class="h-full rounded-full bg-success transition-all"
+                          [style.width.%]="grupo.bachesReportados > 0 ? (grupo.bachesAtendidos / grupo.bachesReportados) * 100 : 0">
+                        </div>
+                      </div>
+                      <span class="text-2xs text-text-muted">
+                        {{ grupo.bachesAtendidos }}/{{ grupo.bachesReportados }} atendidos
+                        · faltan {{ grupo.bachesReportados - grupo.bachesAtendidos }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 text-text-muted">
+                    @if (grupo.tecnicos.length === 0) {
+                      <span>—</span>
+                    } @else {
+                      <div class="flex flex-wrap gap-1.5">
+                        @for (tecnico of grupo.tecnicos; track tecnico.idUsuario) {
+                          <span class="rounded-full bg-primary-soft px-2.5 py-0.5 text-2xs font-medium text-primary">
+                            {{ tecnico.nombre }} {{ tecnico.apellido }}
+                          </span>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td class="px-4 py-3 text-text-muted whitespace-nowrap">{{ grupo.fechaCreacion | date:'dd/MM/yyyy' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+    </div>
+  </div>
+
+  <!-- Panel: crear grupo -->
+  @if (mostrarModal()) {
+    <div
+      class="fixed inset-0 z-[500] flex items-end justify-center bg-black/50 animate-fadeIn"
+      (click)="cerrarModal()">
+      <div
+        class="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-t-[28px] bg-surface p-6 shadow-2xl animate-slide-in-up"
+        (click)="$event.stopPropagation()">
+
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-bold text-text">Crear Grupo</h3>
+          <button
+            type="button"
+            (click)="cerrarModal()"
+            class="flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-alt"
+            aria-label="Cerrar">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        <message-input-error [mensaje]="errorCrear()"></message-input-error>
+
+        <!-- Nombre del grupo -->
+        <div class="flex flex-col gap-1.5 mb-4">
+          <label for="nombreGrupo" class="text-2xs text-text-muted">Nombre del grupo</label>
+          <input
+            id="nombreGrupo"
+            type="text"
+            [ngModel]="nombreGrupo()"
+            (ngModelChange)="nombreGrupo.set($event)"
+            name="nombreGrupo"
+            maxlength="100"
+            placeholder="Ej: Grupo A"
+            class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder-text-muted outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15">
+        </div>
+
+        <!-- Buscador de técnicos -->
+        <div class="flex flex-col gap-1.5 mb-3">
+          <label for="busquedaTecnico" class="text-2xs text-text-muted">Buscar técnico (nombre o cédula)</label>
+          <div class="relative flex items-center w-full">
+            <input
+              id="busquedaTecnico"
+              type="text"
+              [ngModel]="busquedaTecnico()"
+              (ngModelChange)="busquedaTecnico.set($event)"
+              (keydown.enter)="$event.preventDefault(); buscarTecnicos()"
+              name="busquedaTecnico"
+              placeholder="Ej: Juan Pérez"
+              class="w-full rounded-xl border border-border bg-surface pl-4 pr-11 py-3 text-sm text-text placeholder-text-muted outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15">
+            <button
+              type="button"
+              (click)="buscarTecnicos()"
+              [disabled]="buscandoTecnicos()"
+              class="absolute right-3.5 flex items-center justify-center text-text-muted transition-colors hover:text-text active:scale-95 disabled:opacity-50"
+              aria-label="Buscar técnicos">
+              @if (buscandoTecnicos()) {
+                <mat-icon class="!text-xl animate-spin">progress_activity</mat-icon>
+              } @else {
+                <mat-icon class="!text-xl">search</mat-icon>
+              }
+            </button>
+          </div>
+        </div>
+
+        <!-- Resultados de búsqueda -->
+        @if (resultadosTecnicos().length > 0) {
+          <div class="mb-3 flex flex-col gap-1.5 max-h-40 overflow-y-auto rounded-xl border border-border p-2">
+            @for (tecnico of resultadosTecnicos(); track tecnico.idUsuario) {
+              <button
+                type="button"
+                (click)="agregarTecnico(tecnico)"
+                class="flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-text transition-colors hover:bg-surface-alt">
+                <span>{{ tecnico.nombre }} {{ tecnico.apellido }}</span>
+                <mat-icon class="!text-lg text-primary">add_circle</mat-icon>
+              </button>
+            }
+          </div>
+        } @else if (mensajeSinResultados()) {
+          <p class="mb-3 text-2xs text-text-muted">{{ mensajeSinResultados() }}</p>
+        }
+
+        <!-- Técnicos seleccionados -->
+        <div class="mb-4 flex flex-col gap-1.5">
+          <span class="text-2xs text-text-muted">Técnicos del grupo</span>
+          @if (tecnicosSeleccionados().length === 0) {
+            <p class="text-xs text-text-muted">Ningún técnico agregado todavía.</p>
+          } @else {
+            <div class="flex flex-wrap gap-1.5">
+              @for (tecnico of tecnicosSeleccionados(); track tecnico.idUsuario) {
+                <span class="flex items-center gap-1 rounded-full bg-primary-soft px-3 py-1 text-2xs font-medium text-primary">
+                  {{ tecnico.nombre }} {{ tecnico.apellido }}
+                  <button type="button" (click)="quitarTecnico(tecnico.idUsuario)" aria-label="Quitar técnico">
+                    <mat-icon class="!text-sm">close</mat-icon>
+                  </button>
+                </span>
+              }
+            </div>
+          }
+        </div>
+
+        <app-button
+          type="button"
+          variant="primary"
+          [cargando]="creando()"
+          [disabled]="!formularioValido"
+          (btnClick)="crearGrupo()">
+          Crear
+        </app-button>
+
+      </div>
+    </div>
+  }
+
+  <app-navigation-drawer [abierto]="menuAbierto()" (cerrado)="menuAbierto.set(false)"></app-navigation-drawer>
+</div>

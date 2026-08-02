@@ -1,0 +1,25 @@
+<header class="sticky top-0 z-50 flex h-16 w-full items-center gap-3 border-b border-border bg-surface px-4">
+
+  @if (mostrarBotonMenu) {
+    <button
+      (click)="abrirMenu()"
+      class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-text transition-all hover:bg-surface-alt active:scale-95"
+      aria-label="Abrir menú">
+      <mat-icon class="!text-2xl !h-6 !w-6 !leading-none flex items-center justify-center">menu</mat-icon>
+    </button>
+  } @else if (mostrarBotonAtras) {
+    <button
+      (click)="regresar()"
+      class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-text transition-all hover:bg-surface-alt active:scale-95"
+      aria-label="Regresar">
+      <mat-icon class="!text-2xl !h-6 !w-6 !leading-none flex items-center justify-center">arrow_back</mat-icon>
+    </button>
+  }
+
+  <div class="flex flex-1 min-w-0 items-center justify-start h-full">
+    <h2 class="truncate text-left text-base font-semibold tracking-wide text-text leading-none py-0.5">
+      {{ titulo }}
+    </h2>
+  </div>
+
+</header>

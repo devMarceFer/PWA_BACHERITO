@@ -1,0 +1,8 @@
+<div
+  [class]="'w-full rounded-[24px] bg-surface text-text transition-all duration-300 ease-out box-border flex flex-col ' +
+           (sinPadding ? 'p-0' : 'p-6') + ' ' +
+           (conBorde ? 'border border-border shadow-none' : 'shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-border/60') +
+           ' hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(30,41,59,0.12)]'"
+>
+  <ng-content></ng-content>
+</div>

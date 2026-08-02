@@ -1,0 +1,18 @@
+<div class="min-h-screen w-full flex flex-col bg-bg select-none">
+
+  <app-toolbar [titulo]="'Bacherito'" [mostrarBotonMenu]="true" (menuClick)="menuAbierto.set(true)"></app-toolbar>
+
+  <div class="flex flex-col gap-6 p-5">
+    @if (esTecnico) {
+      <app-panel-tecnico></app-panel-tecnico>
+    } @else if (esAdmin) {
+      <app-panel-admin></app-panel-admin>
+    } @else {
+      <div class="flex flex-col items-center justify-center gap-2 py-16 text-center">
+        <p class="text-sm text-text-muted">No tienes un panel disponible para tu rol todavía.</p>
+      </div>
+    }
+  </div>
+
+  <app-navigation-drawer [abierto]="menuAbierto()" (cerrado)="menuAbierto.set(false)"></app-navigation-drawer>
+</div>

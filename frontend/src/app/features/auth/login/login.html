@@ -1,0 +1,90 @@
+<!-- Fondo de pantalla; el color de fondo sigue el token global --color-bg (claro/oscuro) -->
+<div class="fixed inset-0 flex items-center justify-center bg-bg p-4 box-border overflow-hidden select-none">
+
+  <!--
+    El 'main':
+    - Ocupa todo el alto de la pantalla gracias a 'h-full'
+    - Superficie translúcida sobre tokens (bg-surface se adapta a claro/oscuro)
+    - Efecto esmerilado/cristal con 'backdrop-blur-lg'
+    - Esquinas muy redondeadas con 'rounded-[32px]'
+  -->
+  <main class="w-full max-w-[360px] h-full rounded-[32px] border border-border bg-surface/80 p-6 shadow-2xl backdrop-blur-lg flex flex-col justify-center gap-6 animate-fade-in-up">
+
+    <!-- Cabecera / Badge de Seguridad -->
+    <div class="flex flex-col items-center text-center">
+      <h3 class="text-3xl font-extrabold text-primary">Iniciar Sesión</h3>
+      <p class="text-3xs font-medium text-text-muted mt-1 leading-relaxed">
+        Acceso exclusivo para funcionarios y ciudadanos ambateños
+      </p>
+    </div>
+
+    <!-- Formulario -->
+    <form class="flex flex-col gap-5" (ngSubmit)="onSubmit($event)">
+
+      <!-- Componente de error -->
+      <message-input-error [mensaje]="errorLogin()"></message-input-error>
+
+      <!-- Input de Usuario -->
+      <div class="flex flex-col gap-1.5 mt-3">
+        <label for="usuario" class="text-2xs text-text-muted">
+          Correo electronico
+        </label>
+        <input
+          id="usuario"
+          type="email"
+          [ngModel]="usuario()"
+          (ngModelChange)="usuario.set($event)"
+          name="usuario"
+          placeholder="correo@ambato.gob.ec"
+          class="w-full rounded-xl border border-border bg-surface/80 px-4 py-3 text-sm text-text placeholder-text-muted outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15"
+          required>
+      </div>
+
+      <!-- Input de Contraseña -->
+      <div class="flex flex-col gap-1.5 mt-3">
+        <label for="contrasena" class="text-2xs text-text-muted">
+          Contraseña
+        </label>
+        <div class="relative flex items-center w-full">
+          <input
+            id="contrasena"
+            [type]="ocultarContrasena() ? 'password' : 'text'"
+            [ngModel]="contrasena()"
+            (ngModelChange)="contrasena.set($event)"
+            name="contrasena"
+            placeholder="••••••••"
+            class="w-full rounded-xl border border-border bg-surface/80 pl-4 pr-11 py-3 text-sm text-text placeholder-text-muted outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15"
+            required>
+
+          <button
+            type="button"
+            (click)="toggleVisibilidad()"
+            class="absolute right-3.5 flex items-center justify-center text-text-muted transition-colors hover:text-text active:scale-95"
+            aria-label="Ver u ocultar contraseña">
+            <mat-icon class="!text-xl">{{ ocultarContrasena() ? 'visibility' : 'visibility_off' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <!-- Botón -->
+      <div class="mt-5">
+        <app-button
+          type="submit"
+          variant="primary"
+          [cargando]="cargando()"
+          [disabled]="!usuario() || !contrasena()">
+          Iniciar Sesión
+        </app-button>
+      </div>
+
+      <!-- Enlace a creación de cuenta -->
+      <p class="text-center text-2xs font-medium text-text-muted">
+        ¿No tienes una cuenta?
+        <a routerLink="/bienvenida" class="font-semibold text-primary underline-offset-2 hover:underline">
+          Crea Ahora
+        </a>
+      </p>
+
+    </form>
+  </main>
+</div>

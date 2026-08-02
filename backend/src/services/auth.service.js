@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import usuarioRepository from '../repositories/usuario.repository.js';
 import sistemaRepository from '../repositories/sistema.repository.js';
 import sesionRepository from '../repositories/sesion.repository.js';
+import autorizacionService from './autorizacion.service.js';
+import funcionarioService from './funcionario.service.js';
 import { UsuarioModel } from '../models/usuario.model.js';
 import { verificarIdTokenCognito } from '../utils/cognito-verifier.util.js';
 
@@ -11,39 +13,49 @@ const NOMBRE_SISTEMA = process.env.SISTEMA_NOMBRE;
 const JWT_SECRET = process.env.JWT_SECRET;
 
 class AuthService {
-    // Se llama justo después de que el ciudadano confirma el código de verificación en Cognito.
-    // Idempotente: si el correo ya está registrado (reintento del cliente), no falla, devuelve el existente.
+    // Se llama justo después de que el funcionario confirma el código de verificación en Cognito.
+    // Bacherito es exclusiva para funcionarios municipales: la cédula debe existir en la vista
+    // institucional de funcionarios, si no, se rechaza el alta. Idempotente: si el correo ya está
+    // registrado (reintento del cliente), no falla, devuelve el existente.
     async registrarUsuarioCognito(datos) {
         const existentes = await usuarioRepository.findByEmail(datos.correo);
         if (existentes.length > 0) {
             return { ...UsuarioModel.fromDatabaseArray(existentes)[0], creado: false };
         }
 
-        // Cognito es dueño de las credenciales reales del ciudadano; RBAC_USUARIOS exige estas
-        // columnas NOT NULL/UNIQUE pero todavía no recolectamos cédula/RUC en el alta por Cognito.
-        // Se guardan valores temporales, únicos y claramente marcados como pendientes, hasta que
-        // exista la pantalla de "completar perfil" (onboarding) que actualice el documento real.
-        const numDocumentoPendiente = `PEND${crypto.randomBytes(8).toString('hex')}`; // 20 caracteres, único
+        let funcionario;
+        try {
+            funcionario = await funcionarioService.buscarPorCedula(datos.cedula);
+        } catch (error) {
+            throw new Error('NO_ES_FUNCIONARIO');
+        }
+
+        // Los datos de identidad se toman de la vista institucional, no de lo que envía el
+        // cliente, para que una petición manipulada no pueda registrar un nombre/apellido falso.
+        const nombre = funcionario.nombres || datos.nombre;
+        const apellido = funcionario.apellidos || datos.apellido;
         const passwordHashPlaceholder = await bcrypt.hash(crypto.randomUUID(), 10); // nunca podrá usarse para autenticar localmente
 
         try {
             const idUsuario = await usuarioRepository.save({
-                tipoUsuario: 'C',
-                tipoDocumento: 'P',
-                numDocumento: numDocumentoPendiente,
+                tipoUsuario: 'F',
+                tipoDocumento: 'C',
+                numDocumento: datos.cedula,
                 email: datos.correo,
                 passwordHash: passwordHashPlaceholder,
-                nombre: datos.nombre,
-                apellido: datos.apellido,
+                nombre,
+                apellido,
                 activeDirectory: 'N'
             });
 
-            return { idUsuario, email: datos.correo, nombre: datos.nombre, apellido: datos.apellido, creado: true };
+            return { idUsuario, email: datos.correo, nombre, apellido, creado: true };
         } catch (error) {
             if (error.errorNum === 1) {
-                // ORA-00001: otra petición concurrente insertó el mismo correo justo antes.
+                // ORA-00001: puede ser el mismo correo insertado justo antes por otra petición
+                // concurrente, o esta misma cédula ya registrada bajo otro correo.
                 const usuarios = await usuarioRepository.findByEmail(datos.correo);
                 if (usuarios.length > 0) return { ...UsuarioModel.fromDatabaseArray(usuarios)[0], creado: false };
+                throw new Error('CEDULA_YA_REGISTRADA');
             }
             throw error;
         }
@@ -77,14 +89,18 @@ class AuthService {
 
         if (usuarios.length === 0) {
             // Red de seguridad: si el alta posterior a la verificación no se completó por algún motivo,
-            // se resuelve aquí mismo con los datos que trae el propio ID Token verificado.
-            // OJO: Oracle guarda un VARCHAR2 vacío ('') como NULL, lo que violaría el NOT NULL
-            // de NOMBRE/APELLIDO. Por eso los valores de reserva nunca deben ser cadena vacía.
-            await this.registrarUsuarioCognito({
-                correo: email,
-                nombre: claims.given_name || claims.name || 'Ciudadano',
-                apellido: claims.family_name || 'Sin apellido'
-            });
+            // se resuelve aquí mismo con los datos que trae el propio ID Token verificado. El username
+            // de Cognito ES la cédula (así se configuró el alta), por eso sirve para la validación de funcionario.
+            try {
+                await this.registrarUsuarioCognito({
+                    correo: email,
+                    cedula: claims['cognito:username'],
+                    nombre: claims.given_name || claims.name || 'Ciudadano',
+                    apellido: claims.family_name || 'Sin apellido'
+                });
+            } catch (error) {
+                throw new Error('SOLO_FUNCIONARIOS');
+            }
             usuarios = await usuarioRepository.findByEmail(email);
         }
 
@@ -95,6 +111,16 @@ class AuthService {
         }
         if (usuario.estado !== 'S') {
             throw new Error('USUARIO_INACTIVO');
+        }
+        // Bacherito es exclusiva para funcionarios municipales: un ciudadano (registrado antes de
+        // este cambio, o dado de alta por otra vía) no puede iniciar sesión aunque su cuenta esté activa.
+        if (usuario.tipoUsuario !== 'F') {
+            throw new Error('SOLO_FUNCIONARIOS');
+        }
+
+        const autorizaciones = await autorizacionService.obtenerAutorizaciones(usuario.idUsuario);
+        if (autorizaciones.length === 0) {
+            throw new Error('SIN_MODULOS_ASIGNADOS');
         }
 
         const sistemas = await sistemaRepository.findByNombre(NOMBRE_SISTEMA);
@@ -108,9 +134,10 @@ class AuthService {
 
         const jti = crypto.randomUUID();
         const expiraEn = new Date(Date.now() + tokenExpiracionMin * 60 * 1000);
+        const modulos = autorizaciones.map(autorizacion => ({ m: autorizacion.modulo, r: autorizacion.rol }));
 
         const token = jwt.sign(
-            { sub: usuario.idUsuario, email: usuario.email, tipoUsuario: usuario.tipoUsuario },
+            { sub: usuario.idUsuario, email: usuario.email, tipoUsuario: usuario.tipoUsuario, modulos },
             JWT_SECRET,
             { algorithm: 'HS256', expiresIn: tokenExpiracionMin * 60, jwtid: jti }
         );
@@ -134,7 +161,8 @@ class AuthService {
                 nombre: usuario.nombre,
                 apellido: usuario.apellido,
                 tipoUsuario: usuario.tipoUsuario
-            }
+            },
+            autorizaciones
         };
     }
 

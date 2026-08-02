@@ -1,0 +1,81 @@
+<div class="min-h-screen w-full flex flex-col bg-bg select-none">
+
+  <app-toolbar [titulo]="'Verificación'" [mostrarBotonAtras]="true"></app-toolbar>
+
+  <div class="flex-1 overflow-y-auto px-4 py-10 box-border">
+    <div class="w-full max-w-[380px] mx-auto flex flex-col items-center gap-6 text-center">
+
+      <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+        <mat-icon class="!text-3xl !h-8 !w-8">mail</mat-icon>
+      </div>
+
+      <div>
+        <h3 class="text-2xl font-extrabold text-text">Verifica tu correo</h3>
+        <p class="mt-1 text-sm text-text-muted">
+          Enviamos un código a <span class="font-semibold text-text">{{ correo }}</span>
+        </p>
+      </div>
+
+      <form class="flex w-full flex-col items-center gap-6" (ngSubmit)="onSubmit($event)">
+
+        <message-input-error [mensaje]="errorValidacion()"></message-input-error>
+
+        <!-- Casillas del código de 6 dígitos -->
+        <div class="flex gap-2">
+          <input #d0
+            type="text" inputmode="numeric" maxlength="1" autocomplete="one-time-code"
+            (input)="onDigitoInput(0, $event, d1)"
+            (keydown)="onDigitoKeydown(0, $event)"
+            class="h-12 w-11 rounded-xl border border-border bg-surface text-center text-lg font-bold text-text outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15">
+          <input #d1
+            type="text" inputmode="numeric" maxlength="1"
+            (input)="onDigitoInput(1, $event, d2)"
+            (keydown)="onDigitoKeydown(1, $event, d0)"
+            class="h-12 w-11 rounded-xl border border-border bg-surface text-center text-lg font-bold text-text outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15">
+          <input #d2
+            type="text" inputmode="numeric" maxlength="1"
+            (input)="onDigitoInput(2, $event, d3)"
+            (keydown)="onDigitoKeydown(2, $event, d1)"
+            class="h-12 w-11 rounded-xl border border-border bg-surface text-center text-lg font-bold text-text outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15">
+          <input #d3
+            type="text" inputmode="numeric" maxlength="1"
+            (input)="onDigitoInput(3, $event, d4)"
+            (keydown)="onDigitoKeydown(3, $event, d2)"
+            class="h-12 w-11 rounded-xl border border-border bg-surface text-center text-lg font-bold text-text outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15">
+          <input #d4
+            type="text" inputmode="numeric" maxlength="1"
+            (input)="onDigitoInput(4, $event, d5)"
+            (keydown)="onDigitoKeydown(4, $event, d3)"
+            class="h-12 w-11 rounded-xl border border-border bg-surface text-center text-lg font-bold text-text outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15">
+          <input #d5
+            type="text" inputmode="numeric" maxlength="1"
+            (input)="onDigitoInput(5, $event)"
+            (keydown)="onDigitoKeydown(5, $event, d4)"
+            class="h-12 w-11 rounded-xl border border-border bg-surface text-center text-lg font-bold text-text outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15">
+        </div>
+
+        <div class="w-full">
+          <app-button
+            type="submit"
+            variant="primary"
+            [cargando]="cargando()"
+            [disabled]="codigoCompleto.length !== 6">
+            Verificar
+          </app-button>
+        </div>
+
+        <p class="text-2xs font-medium text-text-muted">
+          @if (segundosReenvio() > 0) {
+            ¿No recibiste el código? Reenviar en {{ segundosReenvio() }}s
+          } @else {
+            ¿No recibiste el código?
+            <button type="button" (click)="reenviarCodigo()" class="font-semibold text-primary hover:underline">
+              Reenviar
+            </button>
+          }
+        </p>
+
+      </form>
+    </div>
+  </div>
+</div>

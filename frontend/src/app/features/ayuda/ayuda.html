@@ -1,0 +1,135 @@
+<div class="min-h-screen w-full flex flex-col bg-bg select-none pb-8">
+
+  <!-- Barra superior (Toolbar / Navbar-top) -->
+  <app-toolbar [titulo]="'Guía de Usuario'" [mostrarBotonMenu]="true" (menuClick)="menuAbierto.set(true)"></app-toolbar>
+
+  <!-- Contenido de Ayuda -->
+  <div class="flex flex-col gap-6 p-5">
+    
+    <!-- TARJETA INTRODUCCIÓN (Usando tu componente <card>) -->
+    <card class="block">
+      <!-- Fila de cabecera: Ícono y Pregunta principal -->
+      <div class="flex items-center gap-4">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] bg-primary-soft text-primary">
+          <mat-icon class="!text-2xl !h-6 !w-6">phone_android</mat-icon>
+        </div>
+        <h3 class="text-[17px] font-bold text-text">
+          ¿Cómo reportar un hueco?
+        </h3>
+      </div>
+      <!-- Texto descriptivo inferior -->
+      <p class="mt-4 text-sm text-text-muted leading-relaxed">
+        Sigue estos sencillos pasos para reportar un bache en tu vía. El proceso toma menos de un minuto y no requiere registro.
+      </p>
+    </card>
+
+    <!-- Título de Sección -->
+    <h3 class="text-base font-bold text-text -mb-2">
+      Pasos para realizar un reporte
+    </h3>
+
+    <!-- Stepper de Pasos Dinámicos -->
+    <div class="flex flex-col">
+      @for (paso of pasosReporte(); track paso.numero; let last = $last) {
+        <div class="flex gap-4">
+          
+          <!-- Indicador lateral (Número y línea conectora) -->
+          <div class="flex flex-col items-center">
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-on-primary z-10">
+              {{ paso.numero }}
+            </div>
+            @if (!last) {
+              <div class="w-[2px] bg-border flex-1 my-1"></div>
+            }
+          </div>
+
+          <!-- Tarjeta de Paso (Usando tu componente <card>) -->
+          <card class="block flex-1 mb-5">
+            <div class="flex items-center gap-2 text-primary mb-2">
+              <mat-icon class="!text-[20px] !h-5 !w-5">{{ paso.icono }}</mat-icon>
+              <h4 class="text-sm font-semibold text-text">{{ paso.titulo }}</h4>
+            </div>
+            <p class="text-xs text-text-muted leading-relaxed">
+              {{ paso.desc }}
+            </p>
+          </card>
+
+        </div>
+      }
+    </div>
+
+    <!-- Banner Informativo Offline (Estilo Alerta Ámbar) -->
+    <div class="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 text-amber-900 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
+      <div class="flex items-center gap-2.5 mb-2">
+        <mat-icon class="text-amber-700 !text-[22px] !h-5 !w-5 dark:text-amber-400">wifi_off</mat-icon>
+        <h3 class="text-[15px] font-bold">¿Sin conexión a Internet?</h3>
+      </div>
+      <p class="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+        No te preocupes. Tu reporte se guardará localmente en tu dispositivo. Cuando vuelvas a tener conexión, aparecerá un botón de <strong class="font-bold">Sincronizar Reportes</strong> que enviará todos los reportes pendientes automáticamente.
+      </p>
+    </div>
+
+    <!-- Título de Sección -->
+    <h3 class="text-base font-bold text-text -mb-2">
+      ¿Qué significa cada estado?
+    </h3>
+
+    <!-- Grid de Estados Semánticos con Tailwind -->
+    <div class="flex flex-col gap-4">
+      @for (estado of estadosBache(); track estado.titulo) {
+        
+        <!-- Estado Dinámico -->
+        <div class="flex gap-4 p-4 rounded-2xl border items-start transition-all duration-200"
+          [ngClass]="{
+            'bg-red-50/50 border-red-200 text-red-900 dark:bg-red-950/20 dark:border-red-900/40 dark:text-red-200': estado.tipo === 'pendiente',
+            'bg-amber-50/50 border-amber-200 text-amber-950 dark:bg-amber-950/20 dark:border-amber-900/40 dark:text-amber-200': estado.tipo === 'proceso',
+            'bg-emerald-50/50 border-emerald-200 text-emerald-900 dark:bg-emerald-950/20 dark:border-emerald-900/40 dark:text-emerald-200': estado.tipo === 'atendido'
+          }">
+          
+          <!-- Contenedor del Icono: Esquinas redondeadas simétricas perfectas (squared-rounded) -->
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] transition-all"
+            [ngClass]="{
+              'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300': estado.tipo === 'pendiente',
+              'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300': estado.tipo === 'proceso',
+              'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300': estado.tipo === 'atendido'
+            }">
+            
+            @if (estado.tipo === 'proceso') {
+              <mat-icon class="!text-[22px] !h-[22px] !w-[22px] animate-spin">sync</mat-icon>
+            } @else {
+              <mat-icon class="!text-[22px] !h-[22px] !w-[22px]">{{ estado.icono }}</mat-icon>
+            }
+          </div>
+
+          <!-- Texto del Estado -->
+          <div class="flex-1">
+            <h4 class="text-sm font-bold text-text mb-1">{{ estado.titulo }}</h4>
+            <p class="text-xs leading-relaxed"
+              [ngClass]="{
+                'text-red-700 dark:text-red-300': estado.tipo === 'pendiente',
+                'text-amber-800 dark:text-amber-300': estado.tipo === 'proceso',
+                'text-emerald-700 dark:text-emerald-300': estado.tipo === 'atendido'
+              }">
+              {{ estado.desc }}
+            </p>
+          </div>
+        </div>
+
+      }
+    </div>
+
+    <!-- Tarjeta de Consejos Útiles (Usando tu componente <card>) -->
+    <card class="block mb-4">
+      <h3 class="text-base font-bold text-text mb-4">Consejos útiles</h3>
+      <ul class="list-disc pl-5 flex flex-col gap-3 text-xs text-text-muted leading-relaxed">
+        @for (consejo of consejos(); track consejo) {
+          <!-- El color del marcador (viñeta) se define en azul coincidiendo con tu guía original -->
+          <li class="marker:text-primary marker:text-sm">{{ consejo }}</li>
+        }
+      </ul>
+    </card>
+
+  </div>
+
+  <app-navigation-drawer [abierto]="menuAbierto()" (cerrado)="menuAbierto.set(false)"></app-navigation-drawer>
+</div>

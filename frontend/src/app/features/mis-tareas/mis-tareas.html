@@ -1,0 +1,64 @@
+<div class="min-h-screen w-full flex flex-col bg-bg select-none">
+
+  <app-toolbar [titulo]="'Mis Tareas'" [mostrarBotonMenu]="true" (menuClick)="menuAbierto.set(true)"></app-toolbar>
+
+  <div class="flex-1 overflow-y-auto px-4 py-6 box-border">
+    <div class="w-full max-w-2xl mx-auto flex flex-col gap-4">
+
+      <div class="flex items-center justify-between gap-3">
+        <p class="text-sm text-text-muted">
+          Baches asignados a tus grupos de trabajo.
+        </p>
+        <span
+          class="rounded-full px-2.5 py-1 text-2xs font-semibold shrink-0"
+          [class.bg-emerald-100]="enLinea()"
+          [class.text-emerald-700]="enLinea()"
+          [class.bg-slate-200]="!enLinea()"
+          [class.text-slate-600]="!enLinea()">
+          {{ enLinea() ? 'En línea' : 'Sin conexión' }}
+        </span>
+      </div>
+
+      @if (cargando()) {
+        <p class="text-center text-sm text-text-muted py-8">Cargando tareas...</p>
+      } @else if (tareas().length === 0) {
+        <p class="text-center text-sm text-text-muted py-8">
+          @if (enLinea()) {
+            Tu grupo no tiene baches asignados por el momento.
+          } @else {
+            Sin conexión y sin tareas descargadas. Ve al Home y presiona "Descargar tareas" cuando tengas internet.
+          }
+        </p>
+      } @else {
+        <div class="flex flex-col gap-2.5">
+          @for (tarea of tareas(); track tarea.id) {
+            <div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-text truncate">{{ tarea.nombreReporto }}</p>
+                <p class="text-2xs text-text-muted mt-0.5">
+                  Coordenadas: {{ tarea.coordenadaX }}, {{ tarea.coordenadaY }}
+                </p>
+                <p class="text-2xs text-text-muted mt-0.5">
+                  Reportado {{ tarea.fechaIngreso | date:'dd/MM/yyyy' }}
+                </p>
+              </div>
+              <span
+                class="shrink-0 rounded-full px-2.5 py-1 text-2xs font-semibold"
+                [class.bg-success-bg]="tarea.estado === 'A'"
+                [class.text-success]="tarea.estado === 'A'"
+                [class.bg-warning-bg]="tarea.estado === 'E'"
+                [class.text-warning]="tarea.estado === 'E'"
+                [class.bg-danger-bg]="tarea.estado !== 'A' && tarea.estado !== 'E'"
+                [class.text-danger]="tarea.estado !== 'A' && tarea.estado !== 'E'">
+                {{ labelEstado(tarea.estado) }}
+              </span>
+            </div>
+          }
+        </div>
+      }
+
+    </div>
+  </div>
+
+  <app-navigation-drawer [abierto]="menuAbierto()" (cerrado)="menuAbierto.set(false)"></app-navigation-drawer>
+</div>

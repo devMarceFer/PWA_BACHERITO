@@ -1,0 +1,184 @@
+<div class="min-h-screen w-full flex flex-col bg-bg select-none">
+
+  <app-toolbar [titulo]="'Registro por Correo'" [mostrarBotonAtras]="true"></app-toolbar>
+
+  <div class="flex-1 overflow-y-auto px-4 py-8 box-border">
+    <div class="w-full max-w-[400px] mx-auto flex flex-col gap-6">
+
+      <!-- Formulario -->
+      <form class="flex flex-col gap-5" (ngSubmit)="onSubmit($event)">
+
+        <message-input-error [mensaje]="errorRegistro()"></message-input-error>
+
+        <!-- Cédula | RUC | Pasaporte -->
+        <div class="flex flex-col gap-1.5">
+          <label for="cedula" class="text-2xs text-text-muted">Cédula | RUC | Pasaporte</label>
+          <div class="relative flex items-center w-full">
+            <input
+              id="cedula"
+              type="text"
+              inputmode="numeric"
+              [ngModel]="cedula()"
+              (ngModelChange)="onCedulaChange($event)"
+              (keydown.enter)="$event.preventDefault(); buscarPorCedula()"
+              name="cedula"
+              maxlength="13"
+              placeholder="Ej: 0943961961"
+              class="w-full rounded-xl border border-border bg-surface pl-4 pr-11 py-3 text-sm text-text placeholder-text-muted outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15"
+              required>
+            <button
+              type="button"
+              (click)="buscarPorCedula()"
+              [disabled]="buscandoFuncionario()"
+              class="absolute right-3.5 flex items-center justify-center text-text-muted transition-colors hover:text-text active:scale-95 disabled:opacity-50"
+              aria-label="Buscar datos por cédula">
+              @if (buscandoFuncionario()) {
+                <mat-icon class="!text-xl animate-spin">progress_activity</mat-icon>
+              } @else {
+                <mat-icon class="!text-xl">search</mat-icon>
+              }
+            </button>
+          </div>
+          @if (errorBusquedaCedula()) {
+            <span class="text-2xs text-danger">{{ errorBusquedaCedula() }}</span>
+          } @else if (datosFuncionarioCargados()) {
+            <span class="text-2xs text-primary">Funcionario encontrado: nombre y apellido se completaron automáticamente.</span>
+          }
+        </div>
+
+        <!-- Correo electrónico -->
+        <div class="flex flex-col gap-1.5">
+          <label for="correo" class="text-2xs text-text-muted">Correo electrónico</label>
+          <input
+            id="correo"
+            type="email"
+            [ngModel]="correo()"
+            (ngModelChange)="correo.set($event)"
+            name="correo"
+            maxlength="100"
+            placeholder="tu@correo.com"
+            class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder-text-muted outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15"
+            required>
+        </div>
+
+        <!-- Primer nombre y primer apellido -->
+        <div class="flex gap-3">
+          <div class="flex flex-col gap-1.5 flex-1">
+            <label for="primerNombre" class="text-2xs text-text-muted">Primer Nombre</label>
+            <input
+              id="primerNombre"
+              type="text"
+              [ngModel]="primerNombre()"
+              (ngModelChange)="primerNombre.set($event)"
+              name="primerNombre"
+              maxlength="100"
+              placeholder="Ej: María"
+              [readonly]="datosFuncionarioCargados()"
+              [class.opacity-60]="datosFuncionarioCargados()"
+              class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder-text-muted outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15"
+              required>
+          </div>
+
+          <div class="flex flex-col gap-1.5 flex-1">
+            <label for="primerApellido" class="text-2xs text-text-muted">Primer Apellido</label>
+            <input
+              id="primerApellido"
+              type="text"
+              [ngModel]="primerApellido()"
+              (ngModelChange)="primerApellido.set($event)"
+              name="primerApellido"
+              maxlength="100"
+              placeholder="Ej: Vargas"
+              [readonly]="datosFuncionarioCargados()"
+              [class.opacity-60]="datosFuncionarioCargados()"
+              class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder-text-muted outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15"
+              required>
+          </div>
+        </div>
+
+        <!-- Teléfono -->
+        <div class="flex flex-col gap-1.5">
+          <label for="telefono" class="text-2xs text-text-muted">Teléfono</label>
+          <input
+            id="telefono"
+            type="tel"
+            [ngModel]="telefono()"
+            (ngModelChange)="telefono.set($event)"
+            name="telefono"
+            maxlength="10"
+            placeholder="Ej: 0987654321"
+            class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder-text-muted outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15"
+            required>
+        </div>
+
+        <!-- Contraseña -->
+        <div class="flex flex-col gap-1.5">
+          <label for="contrasena" class="text-2xs text-text-muted">Contraseña</label>
+          <div class="relative flex items-center w-full">
+            <input
+              id="contrasena"
+              [type]="ocultarContrasena() ? 'password' : 'text'"
+              [ngModel]="contrasena()"
+              (ngModelChange)="contrasena.set($event)"
+              name="contrasena"
+              placeholder="Mín. 8: mayúscula, minúscula y número"
+              minlength="8"
+              class="w-full rounded-xl border border-border bg-surface pl-4 pr-11 py-3 text-sm text-text placeholder-text-muted outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15"
+              required>
+            <button
+              type="button"
+              (click)="toggleVisibilidad()"
+              class="absolute right-3.5 flex items-center justify-center text-text-muted transition-colors hover:text-text active:scale-95"
+              aria-label="Ver u ocultar contraseña">
+              <mat-icon class="!text-xl">{{ ocultarContrasena() ? 'visibility' : 'visibility_off' }}</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Confirmar contraseña -->
+        <div class="flex flex-col gap-1.5">
+          <label for="confirmarContrasena" class="text-2xs text-text-muted">Confirmar contraseña</label>
+          <div class="relative flex items-center w-full">
+            <input
+              id="confirmarContrasena"
+              [type]="ocultarConfirmar() ? 'password' : 'text'"
+              [ngModel]="confirmarContrasena()"
+              (ngModelChange)="confirmarContrasena.set($event)"
+              name="confirmarContrasena"
+              placeholder="Repite tu contraseña"
+              minlength="8"
+              class="w-full rounded-xl border border-border bg-surface pl-4 pr-11 py-3 text-sm text-text placeholder-text-muted outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15"
+              required>
+            <button
+              type="button"
+              (click)="toggleVisibilidadConfirmar()"
+              class="absolute right-3.5 flex items-center justify-center text-text-muted transition-colors hover:text-text active:scale-95"
+              aria-label="Ver u ocultar confirmación de contraseña">
+              <mat-icon class="!text-xl">{{ ocultarConfirmar() ? 'visibility' : 'visibility_off' }}</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Botón -->
+        <div class="mt-2">
+          <app-button
+            type="submit"
+            variant="primary"
+            [cargando]="cargando()"
+            [disabled]="!formularioValido">
+            Crear cuenta
+          </app-button>
+        </div>
+
+        <!-- Enlace a login -->
+        <p class="text-center text-2xs font-medium text-text-muted">
+          ¿Ya tienes cuenta?
+          <a routerLink="/login" class="font-semibold text-primary underline-offset-2 hover:underline">
+            Inicia sesión
+          </a>
+        </p>
+
+      </form>
+    </div>
+  </div>
+</div>

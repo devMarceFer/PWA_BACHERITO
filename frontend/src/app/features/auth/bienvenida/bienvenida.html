@@ -1,0 +1,42 @@
+<div class="flex h-[100dvh] w-screen flex-col items-center justify-center gap-8 bg-gradient-to-br from-primary-hover via-primary to-black p-8 box-border overflow-hidden select-none text-center animate-fade-in-up">
+
+  <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 text-on-primary">
+    <mat-icon class="!text-3xl !h-8 !w-8">location_city</mat-icon>
+  </div>
+
+  <div class="space-y-2">
+    <h1 class="text-2xl font-extrabold text-on-primary">¿No tienes cuenta?</h1>
+    <p class="text-sm font-medium text-blue-200">Regístrate para empezar a reportar</p>
+  </div>
+
+  <div class="flex w-full max-w-[320px] flex-col gap-3">
+
+    <button
+      type="button"
+      (click)="continuarConCorreo()"
+      class="flex w-full items-center justify-between rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-primary shadow-lg transition-all duration-200 active:scale-[0.98]">
+      <span class="flex items-center gap-3">
+        <mat-icon class="!text-xl">mail</mat-icon>
+        Correo electrónico
+      </span>
+      <mat-icon class="!text-xl">arrow_forward</mat-icon>
+    </button>
+
+    <button
+      type="button"
+      (click)="continuarConTelefono()"
+      class="flex w-full items-center justify-between rounded-2xl bg-white/10 px-5 py-4 text-sm font-semibold text-on-primary shadow-lg transition-all duration-200 hover:bg-white/15 active:scale-[0.98]">
+      <span class="flex items-center gap-3">
+        <mat-icon class="!text-xl">call</mat-icon>
+        Número de teléfono
+      </span>
+      <mat-icon class="!text-xl">arrow_forward</mat-icon>
+    </button>
+
+  </div>
+
+  <a routerLink="/login" class="text-sm font-semibold text-white/90 underline-offset-4 hover:underline">
+    Si tengo cuenta
+  </a>
+
+</div>

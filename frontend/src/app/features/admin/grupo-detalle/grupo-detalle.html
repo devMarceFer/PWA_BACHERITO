@@ -1,0 +1,252 @@
+<div class="min-h-screen w-full flex flex-col bg-bg select-none">
+
+  <app-toolbar [titulo]="grupo()?.nombre ?? 'Detalle del grupo'" [mostrarBotonAtras]="true"></app-toolbar>
+
+  <div class="flex-1 overflow-y-auto px-4 py-6 box-border">
+    <div class="w-full max-w-2xl mx-auto flex flex-col gap-5">
+
+      @if (cargando()) {
+        <p class="text-center text-sm text-text-muted py-8">Cargando grupo...</p>
+      } @else if (grupo(); as g) {
+
+        <!-- Encabezado -->
+        <div class="rounded-2xl border border-border bg-surface p-5">
+          <h2 class="text-lg font-bold text-text">{{ g.nombre }}</h2>
+
+          <div class="mt-4 flex flex-col gap-1.5">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-2xs text-text-muted">Técnicos del grupo</span>
+              <button
+                type="button"
+                (click)="abrirPickerTecnicos()"
+                class="flex items-center gap-1 text-2xs font-semibold text-primary">
+                <mat-icon class="!text-sm !h-3.5 !w-3.5">add_circle</mat-icon>
+                Agregar técnico
+              </button>
+            </div>
+            @if (errorTecnico()) {
+              <p class="text-2xs text-danger">{{ errorTecnico() }}</p>
+            }
+            <div class="flex flex-wrap gap-1.5">
+              @for (tecnico of g.tecnicos; track tecnico.idUsuario) {
+                <span class="flex items-center gap-1 rounded-full bg-primary-soft px-2.5 py-0.5 text-2xs font-medium text-primary">
+                  {{ tecnico.nombre }} {{ tecnico.apellido }}
+                  <button
+                    type="button"
+                    (click)="quitarTecnico(tecnico.idUsuario)"
+                    [disabled]="quitandoTecnico() === tecnico.idUsuario"
+                    aria-label="Quitar técnico del grupo"
+                    class="disabled:opacity-50">
+                    <mat-icon class="!text-sm">close</mat-icon>
+                  </button>
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Tareas -->
+        <div class="flex items-center justify-between gap-3">
+          <h3 class="text-base font-bold text-text">Tareas (baches asignados)</h3>
+          <app-button type="button" variant="primary" (btnClick)="abrirPicker()">
+            Asignar bache
+          </app-button>
+        </div>
+
+        @if (g.tareas.length === 0) {
+          <p class="text-center text-sm text-text-muted py-8">Todavía no hay baches asignados a este grupo.</p>
+        } @else {
+          <div class="flex flex-col gap-2.5">
+            @for (tarea of g.tareas; track tarea.idTarea) {
+              <div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-text truncate">{{ tarea.nombres }}</p>
+                  <p class="text-2xs text-text-muted mt-0.5">
+                    {{ tarea.parroquiaNombre }} · {{ tarea.estado }} · Reportado {{ tarea.fechaIngreso | date:'dd/MM/yyyy' }}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  (click)="quitarTarea(tarea.idRequerimiento)"
+                  [disabled]="quitando() === tarea.idRequerimiento"
+                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-danger/10 hover:text-danger disabled:opacity-50"
+                  aria-label="Quitar tarea">
+                  <mat-icon class="!text-xl">delete_outline</mat-icon>
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+      }
+
+    </div>
+  </div>
+
+  <!-- Panel: asignar bache disponible -->
+  @if (mostrarPicker()) {
+    <div
+      class="fixed inset-0 z-[500] flex items-end justify-center bg-black/50 animate-fadeIn"
+      (click)="cerrarPicker()">
+      <div
+        class="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-t-[28px] bg-surface p-6 shadow-2xl animate-slide-in-up"
+        (click)="$event.stopPropagation()">
+
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-bold text-text">Baches disponibles</h3>
+          <button
+            type="button"
+            (click)="cerrarPicker()"
+            class="flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-alt"
+            aria-label="Cerrar">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        @if (error()) {
+          <p class="mb-3 text-2xs text-danger">{{ error() }}</p>
+        }
+
+        <!-- Filtro: Todo o por parroquia -->
+        <div class="mb-3 flex gap-2">
+          <button
+            type="button"
+            (click)="cambiarFiltro('todo')"
+            class="flex-1 rounded-xl px-3 py-2 text-sm font-medium transition-colors"
+            [class.bg-primary]="filtro() === 'todo'"
+            [class.text-on-primary]="filtro() === 'todo'"
+            [class.bg-surface-alt]="filtro() !== 'todo'"
+            [class.text-text-muted]="filtro() !== 'todo'">
+            Todo
+          </button>
+          <button
+            type="button"
+            (click)="cambiarFiltro('parroquia')"
+            class="flex-1 rounded-xl px-3 py-2 text-sm font-medium transition-colors"
+            [class.bg-primary]="filtro() === 'parroquia'"
+            [class.text-on-primary]="filtro() === 'parroquia'"
+            [class.bg-surface-alt]="filtro() !== 'parroquia'"
+            [class.text-text-muted]="filtro() !== 'parroquia'">
+            Por parroquia
+          </button>
+        </div>
+
+        @if (filtro() === 'parroquia') {
+          <div class="mb-3 flex flex-col gap-1.5">
+            <select
+              [ngModel]="parCodigoFiltro()"
+              (ngModelChange)="cambiarParroquiaFiltro($event)"
+              class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15">
+              <option [ngValue]="null" disabled>Selecciona una parroquia</option>
+              @for (parroquia of parroquias(); track parroquia.codigo) {
+                <option [ngValue]="parroquia.codigo">{{ parroquia.nombre }}</option>
+              }
+            </select>
+          </div>
+        }
+
+        @if (cargandoDisponibles()) {
+          <p class="text-center text-sm text-text-muted py-8">Cargando baches...</p>
+        } @else if (filtro() === 'parroquia' && parCodigoFiltro() === null) {
+          <p class="text-center text-sm text-text-muted py-8">Selecciona una parroquia para ver sus baches disponibles.</p>
+        } @else if (bachesDisponibles().length === 0) {
+          <p class="text-center text-sm text-text-muted py-8">No hay baches disponibles para asignar.</p>
+        } @else {
+          <div class="flex flex-col gap-1.5">
+            @for (bache of bachesDisponibles(); track bache.idRequerimiento) {
+              <button
+                type="button"
+                (click)="asignarBache(bache)"
+                [disabled]="asignando() === bache.idRequerimiento"
+                class="flex items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm text-text transition-colors hover:bg-surface-alt disabled:opacity-50">
+                <span class="min-w-0">
+                  <span class="block truncate font-medium">{{ bache.nombres }}</span>
+                  <span class="block text-2xs text-text-muted">{{ bache.parroquiaNombre }} · {{ bache.estado }} · {{ bache.fechaIngreso | date:'dd/MM/yyyy' }}</span>
+                </span>
+                <mat-icon class="!text-lg text-primary shrink-0">add_circle</mat-icon>
+              </button>
+            }
+          </div>
+        }
+
+      </div>
+    </div>
+  }
+
+  <!-- Panel: agregar técnico al grupo -->
+  @if (mostrarPickerTecnicos()) {
+    <div
+      class="fixed inset-0 z-[500] flex items-end justify-center bg-black/50 animate-fadeIn"
+      (click)="cerrarPickerTecnicos()">
+      <div
+        class="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-t-[28px] bg-surface p-6 shadow-2xl animate-slide-in-up"
+        (click)="$event.stopPropagation()">
+
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-bold text-text">Agregar técnico</h3>
+          <button
+            type="button"
+            (click)="cerrarPickerTecnicos()"
+            class="flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-alt"
+            aria-label="Cerrar">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        @if (errorTecnico()) {
+          <p class="mb-3 text-2xs text-danger">{{ errorTecnico() }}</p>
+        }
+
+        <div class="flex flex-col gap-1.5 mb-3">
+          <label for="busquedaTecnicoDetalle" class="text-2xs text-text-muted">Buscar técnico (nombre o cédula)</label>
+          <div class="relative flex items-center w-full">
+            <input
+              id="busquedaTecnicoDetalle"
+              type="text"
+              [ngModel]="busquedaTecnico()"
+              (ngModelChange)="busquedaTecnico.set($event)"
+              (keydown.enter)="$event.preventDefault(); buscarTecnicos()"
+              name="busquedaTecnicoDetalle"
+              placeholder="Ej: Juan Pérez"
+              class="w-full rounded-xl border border-border bg-surface pl-4 pr-11 py-3 text-sm text-text placeholder-text-muted outline-none transition-all duration-200 focus:border-primary focus:ring-3 focus:ring-primary/15">
+            <button
+              type="button"
+              (click)="buscarTecnicos()"
+              [disabled]="buscandoTecnicos()"
+              class="absolute right-3.5 flex items-center justify-center text-text-muted transition-colors hover:text-text active:scale-95 disabled:opacity-50"
+              aria-label="Buscar técnicos">
+              @if (buscandoTecnicos()) {
+                <mat-icon class="!text-xl animate-spin">progress_activity</mat-icon>
+              } @else {
+                <mat-icon class="!text-xl">search</mat-icon>
+              }
+            </button>
+          </div>
+        </div>
+
+        @if (resultadosTecnicos().length === 0) {
+          <p class="text-center text-sm text-text-muted py-8">{{ mensajeSinResultados() ?? 'Busca un técnico por nombre o cédula.' }}</p>
+        } @else {
+          <div class="flex flex-col gap-1.5">
+            @for (tecnico of resultadosTecnicos(); track tecnico.idUsuario) {
+              <button
+                type="button"
+                (click)="agregarTecnico(tecnico)"
+                [disabled]="agregandoTecnico() === tecnico.idUsuario"
+                class="flex items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm text-text transition-colors hover:bg-surface-alt disabled:opacity-50">
+                <span class="min-w-0">
+                  <span class="block truncate font-medium">{{ tecnico.nombre }} {{ tecnico.apellido }}</span>
+                  <span class="block text-2xs text-text-muted">{{ tecnico.numDocumento }}</span>
+                </span>
+                <mat-icon class="!text-lg text-primary shrink-0">add_circle</mat-icon>
+              </button>
+            }
+          </div>
+        }
+
+      </div>
+    </div>
+  }
+
+  <app-navigation-drawer [abierto]="menuAbierto()" (cerrado)="menuAbierto.set(false)"></app-navigation-drawer>
+</div>

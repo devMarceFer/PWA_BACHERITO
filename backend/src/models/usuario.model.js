@@ -24,6 +24,9 @@ export class UsuarioModel {
         if (!correoValido) {
             return { valido: false, error: 'El correo electrónico no es válido o supera los 100 caracteres.' };
         }
+        if (!/^\d{10}$/.test(data.cedula || '')) {
+            return { valido: false, error: 'La cédula debe tener 10 dígitos numéricos.' };
+        }
         if (!data.nombre || typeof data.nombre !== 'string' || !data.nombre.trim() || data.nombre.length > 100) {
             return { valido: false, error: 'El nombre es obligatorio y debe tener máximo 100 caracteres.' };
         }

@@ -1,0 +1,147 @@
+<div class="h-[100dvh] w-full flex flex-col bg-bg select-none overflow-hidden">
+
+  <app-toolbar [titulo]="'Baches Reportados'" [mostrarBotonMenu]="true" (menuClick)="menuAbierto.set(true)"></app-toolbar>
+
+  <div class="relative flex-1">
+    <div id="mapa-seguimiento" class="absolute inset-0 z-0"></div>
+
+    <!-- Leyenda de colores: cada estado se puede activar/desactivar para filtrar el mapa -->
+    <div class="absolute left-4 top-4 z-[400] flex flex-col gap-1.5 rounded-xl border border-border bg-surface/95 px-3 py-2.5 shadow-lg backdrop-blur-sm">
+      <label class="flex items-center gap-2 text-xs font-medium text-text cursor-pointer">
+        <input
+          type="checkbox"
+          [checked]="mostrarNuevo()"
+          (change)="toggleFiltro('nuevo')"
+          class="h-3.5 w-3.5 accent-red-600">
+        <span class="h-2.5 w-2.5 rounded-full bg-red-600"></span> Nuevo
+      </label>
+      <label class="flex items-center gap-2 text-xs font-medium text-text cursor-pointer">
+        <input
+          type="checkbox"
+          [checked]="mostrarMantenimiento()"
+          (change)="toggleFiltro('mantenimiento')"
+          class="h-3.5 w-3.5 accent-amber-500">
+        <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span> Mantenimiento
+      </label>
+      <label class="flex items-center gap-2 text-xs font-medium text-text cursor-pointer">
+        <input
+          type="checkbox"
+          [checked]="mostrarAtendido()"
+          (change)="toggleFiltro('atendido')"
+          class="h-3.5 w-3.5 accent-emerald-600">
+        <span class="h-2.5 w-2.5 rounded-full bg-emerald-600"></span> Atendido
+      </label>
+    </div>
+
+    <!-- Se muestra mientras se cargan y pintan los marcadores (puede haber miles de baches) -->
+    @if (cargando()) {
+      <div class="absolute inset-0 z-[450] flex flex-col items-center justify-center gap-3 bg-bg/80 backdrop-blur-sm">
+        <mat-icon class="!text-4xl !h-10 !w-10 animate-spin text-primary">progress_activity</mat-icon>
+        <p class="text-sm font-medium text-text-muted">Cargando baches del mapa...</p>
+      </div>
+    }
+
+    <!-- Botón flotante: reportar un nuevo bache (independiente del rol; solo requiere REPORTAR_BACHE).
+         Solo icono (blanco sobre naranja fuerte), sin texto. bottom usa env(safe-area-inset-bottom)
+         para no quedar tapado por la barra de gestos en iPhone/iPad con notch. -->
+    @if (puedeReportar) {
+      <button
+        type="button"
+        (click)="irAReportar()"
+        class="absolute right-5 z-[400] flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 text-white shadow-[0_8px_20px_-4px_rgba(0,0,0,0.45)] ring-1 ring-black/5 transition-all duration-200 hover:bg-orange-700 hover:shadow-[0_10px_26px_-4px_rgba(0,0,0,0.5)] active:scale-95"
+        style="bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));"
+        aria-label="Reportar un nuevo bache">
+        <mat-icon class="!text-3xl !h-8 !w-8 !leading-none flex items-center justify-center">add_location_alt</mat-icon>
+      </button>
+    }
+  </div>
+
+  <!-- Popup: actualizar el estado de un bache asignado -->
+  @if (tareaSeleccionada(); as tarea) {
+    <div
+      class="fixed inset-0 z-[500] flex items-end justify-center bg-black/50 animate-fadeIn"
+      (click)="cerrarPopup()">
+      <div
+        class="w-full max-w-md rounded-t-[28px] bg-surface p-6 shadow-2xl animate-slide-in-up"
+        (click)="$event.stopPropagation()">
+
+        <div class="mb-1 flex items-center justify-between">
+          <h3 class="text-lg font-bold text-text">{{ esAdmin ? 'Detalle del bache' : 'Actualizar bache' }}</h3>
+          <button
+            type="button"
+            (click)="cerrarPopup()"
+            class="flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-alt"
+            aria-label="Cerrar">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        <div class="mb-4 flex flex-col gap-2.5 rounded-xl border border-border bg-surface-alt p-4 text-sm">
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-text-muted">Reportado por</span>
+            <span class="font-medium text-text">{{ tarea.nombre }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-text-muted">Estado</span>
+            <span class="font-medium text-text">{{ labelEstado(tarea.estadoCodigo) }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-text-muted">Fecha de ingreso</span>
+            <span class="font-medium text-text">{{ tarea.fechaIngreso | date:'dd/MM/yyyy' }}</span>
+          </div>
+          @if (esAdmin) {
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-text-muted">Grupo asignado</span>
+              <span class="font-medium text-text">{{ tarea.nombreGrupo ?? 'Sin asignar' }}</span>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-text-muted">Técnico(s)</span>
+              <span class="font-medium text-text text-right">{{ tarea.tecnicos ?? '—' }}</span>
+            </div>
+          }
+        </div>
+
+        @if (!esAdmin) {
+          <p class="mb-3 text-sm text-text-muted">
+            Sube una fotografía del cambio (opcional) y elige el nuevo estado.
+          </p>
+
+          <button
+            type="button"
+            (click)="fotoCambioInput.click()"
+            class="mb-4 flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-surface-alt p-5 text-center transition-all duration-200 hover:border-primary">
+            @if (fotoCambio()) {
+              <img [src]="fotoCambio()" alt="Foto del cambio" class="max-h-[180px] w-full rounded-xl object-cover shadow-sm">
+            } @else {
+              <mat-icon class="!text-4xl !h-10 !w-10 text-text-muted">add_photo_alternate</mat-icon>
+              <p class="text-xs font-medium text-text-muted">Tomar foto o seleccionar imagen</p>
+            }
+          </button>
+          <input #fotoCambioInput type="file" accept="image/*" (change)="onFotoCambioSeleccionada($event)" class="hidden">
+
+          <div class="flex gap-3">
+            <button
+              type="button"
+              [disabled]="guardando()"
+              (click)="guardarCambio('E')"
+              class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-warning px-4 py-3.5 text-sm font-semibold text-white shadow-md transition-all duration-200 active:scale-[0.98] disabled:opacity-60">
+              <mat-icon class="!text-lg !h-5 !w-5">build</mat-icon>
+              Mantenimiento
+            </button>
+            <button
+              type="button"
+              [disabled]="guardando()"
+              (click)="guardarCambio('A')"
+              class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-success px-4 py-3.5 text-sm font-semibold text-white shadow-md transition-all duration-200 active:scale-[0.98] disabled:opacity-60">
+              <mat-icon class="!text-lg !h-5 !w-5">check_circle</mat-icon>
+              Atendido
+            </button>
+          </div>
+        }
+
+      </div>
+    </div>
+  }
+
+  <app-navigation-drawer [abierto]="menuAbierto()" (cerrado)="menuAbierto.set(false)"></app-navigation-drawer>
+</div>

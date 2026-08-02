@@ -1,0 +1,94 @@
+/* You can add global styles to this file, and also import other style files */
+
+@import 'tailwindcss';
+@import 'leaflet/dist/leaflet.css';
+
+/* Fuente de iconos autoalojada (en vez de fonts.googleapis.com): en redes municipales
+   restringidas o sin conexión los iconos no cargaban porque dependían de un CDN externo. */
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/material-icons.woff2') format('woff2'),
+       url('/fonts/material-icons.woff') format('woff');
+}
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
+}
+
+/* Reactiva el selector "dark:" en base al atributo [data-theme] en <html>
+   (controlado por ThemeService) en lugar del "prefers-color-scheme" del SO,
+   así el usuario puede alternar el tema manualmente desde la app. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Paleta de colores global de la aplicación: "Black and Gold Elegance"
+ * (#FFFFFF, #E5E5E5, #FCA311, #14213D, #000000).
+ * Para retemátizar la app, cambia únicamente los valores de este bloque.
+ * Cada token se expone como utilidad de Tailwind (bg-primary, text-text, etc.)
+ */
+@theme {
+  /* Marca / Primario (navy de la paleta) */
+  --color-primary: #14213D;
+  --color-primary-hover: #1f3157;
+  --color-primary-soft: #e9ecf3;
+  --color-on-primary: #ffffff;
+
+  /* Superficies (fondo blanco, tal como se pidió) */
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f2f2f2;
+  --color-border: #e5e5e5;
+
+  /* Texto */
+  --color-text: #000000;
+  --color-text-muted: #6b6b6b;
+
+  /* Estados semánticos (el dorado de la paleta se usa como acento/warning) */
+  --color-success: #16a34a;
+  --color-success-bg: #ecfceb;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fef2f2;
+  --color-warning: #FCA311;
+  --color-warning-bg: #fff3e0;
+}
+
+/* Sobrescritura de la misma paleta para el modo oscuro */
+:root[data-theme='dark'] {
+  --color-primary: #4c6fc7;
+  --color-primary-hover: #6382d6;
+  --color-primary-soft: #1c2438;
+  --color-on-primary: #ffffff;
+
+  /* Fondo negro y superficies en el navy de la paleta */
+  --color-bg: #000000;
+  --color-surface: #14213D;
+  --color-surface-alt: #1b2c4d;
+  --color-border: #2a3a5c;
+
+  --color-text: #ffffff;
+  --color-text-muted: #9ca8c4;
+
+  --color-success: #22c55e;
+  --color-success-bg: rgba(34, 197, 94, 0.14);
+  --color-danger: #f87171;
+  --color-danger-bg: rgba(248, 113, 113, 0.14);
+  --color-warning: #FCA311;
+  --color-warning-bg: rgba(252, 163, 17, 0.16);
+}
+
+/*Coordenadas obtenidas: Lat: -1.268225273307791, Lng: -78.62771494152528*/
