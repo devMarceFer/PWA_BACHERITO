@@ -44,6 +44,7 @@
 /frontend/Thumbs.db
 
 # Claude Code local settings
+/.claude/settings.local.json
 /frontend/.claude/settings.local.json
 
 
