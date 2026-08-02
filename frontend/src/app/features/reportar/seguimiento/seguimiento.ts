@@ -71,6 +71,9 @@ export class SeguimientoComponent implements AfterViewInit, OnDestroy {
   tareaSeleccionada = signal<TareaMapa | null>(null);
   fotoCambio = signal<string | null>(null);
   guardando = signal(false);
+  // Aviso cuando el cambio de estado se guardó en el dispositivo pero no llegó al servidor
+  // (bug B4): se muestra dentro de la pantalla, nunca con alert().
+  avisoPendiente = signal<string | null>(null);
   // Se muestra hasta que los marcadores terminan de pintarse: con todos los baches del sistema
   // (potencialmente miles, la mayoría "Atendido") pintar el mapa puede tardar un momento.
   cargando = signal(true);
@@ -253,10 +256,16 @@ export class SeguimientoComponent implements AfterViewInit, OnDestroy {
     if (!tarea) return;
 
     this.guardando.set(true);
-    await this.misTareasService.cambiarEstado(tarea.idRequerimiento, nuevoEstado);
+    const { subido } = await this.misTareasService.cambiarEstado(tarea.idRequerimiento, nuevoEstado);
     this.guardando.set(false);
     this.cerrarPopup();
     await this.cargarTareas();
+
+    // El cambio siempre queda guardado en el dispositivo; si no llegó al servidor, el técnico
+    // necesita saber que debe ir a Sincronización a enviarlo (antes esto se perdía en silencio).
+    this.avisoPendiente.set(
+      subido ? null : 'El cambio se guardó en el dispositivo pero aún no llega al servidor. Súbelo desde Sincronización.'
+    );
   }
 
   irAReportar() {

@@ -86,7 +86,10 @@ export class MisTareasService {
   // Cambia el estado del bache. Con conexión intenta subirlo de una vez; si no hay conexión o el
   // servidor falla, el cambio queda guardado localmente con pendienteSubir=1 y se envía después
   // desde /sincronizacion. Antes de esto el cambio offline se perdía para siempre (bug B4).
-  async cambiarEstado(idRequerimiento: number, nuevoEstado: 'A' | 'E'): Promise<void> {
+  //
+  // Devuelve si el cambio llegó al servidor (subido=true) o quedó pendiente (subido=false), para
+  // que quien llama (seguimiento.ts) pueda avisarle al técnico que todavía falta enviarlo.
+  async cambiarEstado(idRequerimiento: number, nuevoEstado: 'A' | 'E'): Promise<{ subido: boolean }> {
     let pendienteSubir: 0 | 1 = 1;
 
     if (this.connectionService.isOnline()) {
@@ -98,10 +101,29 @@ export class MisTareasService {
       }
     }
 
-    await dbLocal.tareasTecnicoOff
+    const filasActualizadas = await dbLocal.tareasTecnicoOff
       .where('idRequerimiento')
       .equals(idRequerimiento)
       .modify({ estado: nuevoEstado, pendienteSubir });
+
+    // La tarea puede no estar en la copia local: el mapa de seguimiento se alimenta de la lista
+    // en vivo del servidor, no de tareasTecnicoOff. Si el cambio quedó pendiente y no había fila
+    // que actualizar, se crea una entrada de cola para no perderlo (bug B4). Los campos de
+    // presentación quedan vacíos a propósito: esta fila solo existe para cargar la respuesta
+    // pendiente, y la próxima descargarTareas() reemplaza toda la tabla de todos modos.
+    if (filasActualizadas === 0 && pendienteSubir === 1) {
+      await dbLocal.tareasTecnicoOff.add({
+        idRequerimiento,
+        estado: nuevoEstado,
+        nombreReporto: '',
+        coordenadaX: 0,
+        coordenadaY: 0,
+        fechaIngreso: '',
+        pendienteSubir: 1
+      });
+    }
+
+    return { subido: pendienteSubir === 0 };
   }
 
   // Cuántos cambios de estado hechos en este dispositivo todavía no llegaron al servidor.

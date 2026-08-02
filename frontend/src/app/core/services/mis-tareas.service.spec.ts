@@ -76,6 +76,55 @@ describe('MisTareasService', () => {
       expect(tarea?.estado).toBe('A');
       expect(tarea?.pendienteSubir).toBe(1);
     });
+
+    it('devuelve subido=true cuando el cambio llegó al servidor', async () => {
+      await dbLocal.tareasTecnicoOff.add(tareaDePrueba(57));
+
+      const resultado = await servicio.cambiarEstado(57, 'E');
+
+      expect(resultado).toEqual({ subido: true });
+    });
+
+    it('devuelve subido=false cuando el servidor falla', async () => {
+      httpFalso.patch.mockImplementation(() => throwError(() => new Error('500')));
+      await dbLocal.tareasTecnicoOff.add(tareaDePrueba(57));
+
+      const resultado = await servicio.cambiarEstado(57, 'A');
+
+      expect(resultado).toEqual({ subido: false });
+    });
+
+    // Regresión de B4: el mapa de seguimiento se alimenta de la lista EN VIVO del servidor
+    // (obtenerResumenServidor), no de tareasTecnicoOff. Un técnico puede intentar cambiar el
+    // estado de una tarea que nunca bajó a este dispositivo. Antes de este fix, el .modify()
+    // sobre una colección vacía no hacía nada y el cambio se perdía sin avisar.
+    it('online + PATCH falla + la tarea no está en la copia local: crea una fila de cola en vez de perder el cambio', async () => {
+      httpFalso.patch.mockImplementation(() => throwError(() => new Error('500')));
+
+      const resultado = await servicio.cambiarEstado(57, 'A');
+
+      expect(resultado).toEqual({ subido: false });
+      const tarea = await dbLocal.tareasTecnicoOff.where('idRequerimiento').equals(57).first();
+      expect(tarea).toBeDefined();
+      expect(tarea?.estado).toBe('A');
+      expect(tarea?.pendienteSubir).toBe(1);
+      expect(await servicio.contarRespuestasPendientes()).toBe(1);
+    });
+
+    it('la fila de cola creada para una tarea ausente sí se puede subir con subirRespuestasPendientes', async () => {
+      httpFalso.patch.mockImplementationOnce(() => throwError(() => new Error('500')));
+      await servicio.cambiarEstado(57, 'A');
+
+      httpFalso.patch.mockImplementation(() => of({ success: true }));
+      const resultado = await servicio.subirRespuestasPendientes();
+
+      expect(resultado).toEqual({ enviados: 1, fallidos: 0 });
+      expect(httpFalso.patch).toHaveBeenLastCalledWith(
+        expect.stringContaining('/57/atender'),
+        { estado: 'A' }
+      );
+      expect(await servicio.contarRespuestasPendientes()).toBe(0);
+    });
   });
 
   describe('subirRespuestasPendientes', () => {

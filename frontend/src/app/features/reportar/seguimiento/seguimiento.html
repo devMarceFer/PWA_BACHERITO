@@ -2,6 +2,21 @@
 
   <app-toolbar [titulo]="'Baches Reportados'" [mostrarBotonMenu]="true" (menuClick)="menuAbierto.set(true)"></app-toolbar>
 
+  <!-- Aviso: el cambio de estado se guardó en el dispositivo pero todavía no llega al servidor -->
+  @if (avisoPendiente(); as aviso) {
+    <div class="mx-4 mt-2 flex items-start gap-2.5 rounded-2xl bg-danger-bg px-4 py-3">
+      <mat-icon class="!text-xl text-danger" aria-hidden="true">cloud_off</mat-icon>
+      <span class="flex-1 text-sm font-medium text-danger">{{ aviso }}</span>
+      <button
+        type="button"
+        (click)="avisoPendiente.set(null)"
+        class="text-danger"
+        aria-label="Cerrar aviso">
+        <mat-icon class="!text-lg">close</mat-icon>
+      </button>
+    </div>
+  }
+
   <div class="relative flex-1">
     <div id="mapa-seguimiento" class="absolute inset-0 z-0"></div>
 
