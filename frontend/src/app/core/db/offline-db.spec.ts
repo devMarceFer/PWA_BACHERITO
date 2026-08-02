@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import Dexie, { Transaction } from 'dexie';
+import Dexie from 'dexie';
 import {
   OfflineAppDB,
   TareaTecnicoOffline,
@@ -167,6 +167,119 @@ describe('OfflineAppDB - Versión 9: pendienteSubir y metaSyncOff', () => {
       await dbAntigua.close();
       await dbNueva.close();
       await Dexie.delete('TestMigracionDB');
+    });
+  });
+
+  // La prueba de arriba solo verifica migrarTareasAV9 en aislamiento, contra un esquema v8
+  // hecho a mano de dos versiones. Un técnico real llega a v9 caminando TODA la cadena desde v3,
+  // que incluye los renombres de v5 (con `null` para borrar las tablas viejas), el
+  // borra-y-recrea de tareasTecnicoOff en v6/v7 (cambia de keyPath idRequerimiento a ++id) y el
+  // `estadoBacheOff: null` de v8. Esta prueba camina esa cadena real, con datos sembrados como
+  // llegarían en un dispositivo que ya tenía la app instalada antes de este ticket (parado en v8).
+  describe('Cadena de migración completa v3 -> v9 (dispositivo real)', () => {
+    const NOMBRE_BD = 'BacheritoMigracionCadenaCompletaTest';
+
+    afterEach(async () => {
+      await Dexie.delete(NOMBRE_BD);
+    });
+
+    // Declara la cadena de versiones exactamente como offline-db.ts, hasta v8 (todavía sin la
+    // migración que se está probando). Se reutiliza en los dos "opens" de la prueba: el primero
+    // sirve para sembrar datos tal como quedarían en un dispositivo real antes de este ticket; el
+    // segundo reabre la MISMA base agregando recién ahí la v9 real, para que Dexie de verdad
+    // ejecute la migración (y no una re-declaración de la v9 hecha a mano en el test).
+    function declararHastaV8(db: Dexie) {
+      db.version(3).stores({
+        parroquias: 'codigo, nombre',
+        reportes: '++id, PARROQUIA, SINCRONIZADO, FECHA_INGRESO'
+      });
+      db.version(4).stores({
+        parroquias: 'codigo, nombre',
+        reportes: '++id, PARROQUIA, SINCRONIZADO, FECHA_INGRESO',
+        tareasTecnico: 'idRequerimiento, estadoCrudo, atendidoPendienteSubir'
+      });
+      db.version(5).stores({
+        parroquias: null,
+        reportes: null,
+        tareasTecnico: null,
+        parroquiasOff: 'codigo',
+        reportesOff: '++id, SINCRONIZADO, FECHA_INGRESO',
+        tareasTecnicoOff: 'idRequerimiento, atendidoPendienteSubir',
+        estadoBacheOff: 'idReporte, sincronizado'
+      });
+      db.version(6).stores({
+        tareasTecnicoOff: null
+      });
+      db.version(7).stores({
+        tareasTecnicoOff: '++id, idRequerimiento'
+      });
+      db.version(8).stores({
+        estadoBacheOff: null
+      });
+    }
+
+    it('conserva reportesOff intacto, migra tareasTecnicoOff con pendienteSubir=0 y deja el índice pendienteSubir usable', async () => {
+      // 1. Dispositivo que ya tenía la app instalada antes de este ticket: llega hasta v8, con un
+      // reporte offline pendiente y dos tareas asignadas (forma v7: sin pendienteSubir).
+      const dbVieja = new Dexie(NOMBRE_BD);
+      declararHastaV8(dbVieja);
+      await dbVieja.open();
+
+      const reporteSembrado = {
+        NOMBRES: 'Ana Vecina', CEDULA: '1804567890', TELEFONO: '0999999999', PARROQUIA: 1,
+        COORDENADAX: '-78.62722', COORDENADAY: '-1.24908', X: null, Y: null, ESTADO: 'N',
+        FECHA_INGRESO: 1754150400000, FOTOGRAFIA: 'data:image/png;base64,AAAA',
+        NOMBRE_IMAGEN: '1_ana_test_bache_ant.png', SINCRONIZADO: 0
+      };
+      await dbVieja.table('reportesOff').add(reporteSembrado);
+
+      await dbVieja.table('tareasTecnicoOff').bulkAdd([
+        { idRequerimiento: 57, estado: 'I', nombreReporto: 'Ana', coordenadaX: -78.6, coordenadaY: -1.2, fechaIngreso: '2026-07-01' },
+        { idRequerimiento: 58, estado: 'E', nombreReporto: 'Luis', coordenadaX: -78.7, coordenadaY: -1.3, fechaIngreso: '2026-07-02' }
+      ]);
+      dbVieja.close();
+
+      // 2. Se reabre la MISMA base, ahora con la cadena completa hasta v9 tal cual offline-db.ts,
+      // usando la función real migrarTareasAV9 (no una copia de prueba).
+      const dbNueva = new Dexie(NOMBRE_BD);
+      declararHastaV8(dbNueva);
+      dbNueva.version(9)
+        .stores({
+          tareasTecnicoOff: '++id, idRequerimiento, pendienteSubir',
+          metaSyncOff: 'clave'
+        })
+        .upgrade(migrarTareasAV9);
+      await dbNueva.open();
+
+      // reportesOff nunca se vuelve a redefinir después de v5: debe sobrevivir intacto toda la
+      // cadena v6->v9, con sus campos tal cual (incluida la foto en base64).
+      const reportes = await dbNueva.table('reportesOff').toArray();
+      expect(reportes).toHaveLength(1);
+      expect(reportes[0]).toMatchObject(reporteSembrado);
+
+      // tareasTecnicoOff: las dos tareas sembradas (forma v7, sin pendienteSubir) sobreviven al
+      // borra-y-recrea de v6/v7 (porque se sembraron DESPUÉS de esa migración, como en un
+      // dispositivo real) y quedan con pendienteSubir=0 tras la migración v9.
+      const tareas = await dbNueva.table('tareasTecnicoOff').toArray();
+      expect(tareas).toHaveLength(2);
+      expect(tareas.every((t) => t.pendienteSubir === 0)).toBe(true);
+
+      // El índice pendienteSubir existe de verdad y filtra (no solo "no revienta"): se agrega una
+      // fila pendiente nueva, como haría cambiarEstado() sin conexión, y el cursor debe encontrar
+      // solo esa, sin mezclar las que ya quedaron en 0.
+      await dbNueva.table('tareasTecnicoOff').add({
+        idRequerimiento: 99, estado: 'A', nombreReporto: 'Pedro',
+        coordenadaX: -78.5, coordenadaY: -1.1, fechaIngreso: '2026-07-03', pendienteSubir: 1
+      });
+
+      const pendientes = await dbNueva.table('tareasTecnicoOff').where('pendienteSubir').equals(1).toArray();
+      expect(pendientes).toHaveLength(1);
+      expect(pendientes[0].idRequerimiento).toBe(99);
+
+      const sincronizadas = await dbNueva.table('tareasTecnicoOff').where('pendienteSubir').equals(0).count();
+      expect(sincronizadas).toBe(2);
+
+      dbNueva.close();
     });
   });
 });
