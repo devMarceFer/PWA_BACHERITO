@@ -77,6 +77,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/mis-tareas/mis-tareas').then(m => m.MisTareasComponent)
   },
 
+  {
+    path: 'sincronizacion',
+    canActivate: [authGuard, moduloGuard('MIS_TAREAS')], // 🛡️ Protegido
+    loadComponent: () => import('./features/sincronizacion/sincronizacion').then(m => m.SincronizacionComponent)
+  },
+
    // Comodín para redirigir cualquier error de ruta al inicio del flujo
   { path: '**', redirectTo: '' }
 ];

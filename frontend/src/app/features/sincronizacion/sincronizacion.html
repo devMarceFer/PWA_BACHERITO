@@ -1,0 +1,211 @@
+<div class="min-h-screen w-full flex flex-col bg-bg select-none">
+
+  <app-toolbar [titulo]="'Sincronización'" [mostrarBotonMenu]="true" (menuClick)="menuAbierto.set(true)"></app-toolbar>
+  <app-navigation-drawer [abierto]="menuAbierto()" (cerrado)="menuAbierto.set(false)"></app-navigation-drawer>
+
+  <div class="flex-1 overflow-y-auto px-4 py-6 box-border">
+    <div class="w-full max-w-2xl mx-auto">
+
+  <!-- Encabezado -->
+  <div class="mb-5">
+    <h2 class="text-xl font-extrabold text-text">Sincronización</h2>
+    <p class="mt-0.5 text-sm text-text-muted">
+      Administra la descarga de tus tareas y el envío de respuestas y nuevos reportes.
+    </p>
+  </div>
+
+  <!-- Aviso de sin conexión -->
+  @if (!enLinea()) {
+    <div class="mb-4 flex items-center gap-2.5 rounded-2xl bg-danger-bg px-4 py-3">
+      <mat-icon class="!text-xl text-danger">cloud_off</mat-icon>
+      <span class="text-sm font-semibold text-danger">Sin conexión a internet</span>
+    </div>
+  }
+
+  <!-- Resultado de la última operación -->
+  @if (mensaje(); as m) {
+    <div
+      class="mb-4 flex items-start gap-2.5 rounded-2xl px-4 py-3"
+      [class.bg-success-bg]="m.ok"
+      [class.bg-danger-bg]="!m.ok">
+      <mat-icon class="!text-xl" [class.text-success]="m.ok" [class.text-danger]="!m.ok">
+        {{ m.ok ? 'check_circle' : 'error' }}
+      </mat-icon>
+      <span class="text-sm font-medium" [class.text-success]="m.ok" [class.text-danger]="!m.ok">
+        {{ m.texto }}
+      </span>
+    </div>
+  }
+
+  <!-- Contadores -->
+  <div class="grid grid-cols-2 gap-4">
+    <card>
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400">
+        <mat-icon class="!text-xl">cloud_off</mat-icon>
+      </div>
+      <p class="mt-3 text-2xl font-extrabold text-text">{{ reportesPendientes() }}</p>
+      <p class="text-xs text-text-muted">Reportados offline</p>
+    </card>
+
+    <card>
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-success-bg text-success">
+        <mat-icon class="!text-xl">cloud_done</mat-icon>
+      </div>
+      <p class="mt-3 text-2xl font-extrabold text-text">{{ reportesSincronizados() }}</p>
+      <p class="text-xs text-text-muted">Reportes sincronizados</p>
+    </card>
+  </div>
+
+  <!-- Descargar recursos -->
+  <card class="mt-4 block">
+    <div class="flex items-start gap-3">
+      <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400" aria-hidden="true">
+        <mat-icon class="!text-2xl">download</mat-icon>
+      </div>
+      <div class="min-w-0 flex-1">
+        <h3 class="text-base font-bold text-text">Descargar Recursos del sistema</h3>
+        <p class="mt-0.5 text-xs text-text-muted">
+          Última descarga:
+          {{ ultimaDescarga() ? (ultimaDescarga() | date:'dd/MM/yyyy HH:mm') : 'Nunca' }}
+        </p>
+      </div>
+    </div>
+
+    <p class="mt-3 text-sm text-text-muted">
+      Trae los recursos del sistema para trabajar sin conexión.
+    </p>
+
+    @if (motivoBloqueoDescarga(); as motivo) {
+      <p class="mt-2 text-xs font-medium text-danger">{{ motivo }}</p>
+    }
+
+    <button
+      type="button"
+      (click)="descargar()"
+      [disabled]="!puedeDescargar()"
+      class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-all active:scale-[0.98] disabled:opacity-50">
+      <mat-icon class="!text-lg !h-5 !w-5" [class.animate-spin]="ocupado()">
+        {{ ocupado() ? 'sync' : 'download' }}
+      </mat-icon>
+      Descargar
+    </button>
+  </card>
+
+  <!-- Subir respuestas -->
+  <card class="mt-4 block">
+    <div class="flex items-start gap-3">
+      <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 dark:bg-teal-950/20 dark:text-teal-400" aria-hidden="true">
+        <mat-icon class="!text-2xl">upload_file</mat-icon>
+      </div>
+      <div class="min-w-0 flex-1">
+        <h3 class="text-base font-bold text-text">Subir respuesta</h3>
+        <p class="mt-0.5 text-xs text-text-muted">
+          Último envío:
+          {{ ultimoEnvio() ? (ultimoEnvio() | date:'dd/MM/yyyy HH:mm') : 'Nunca' }}
+        </p>
+      </div>
+    </div>
+
+    <p class="mt-3 text-sm text-text-muted">
+      Envía al servidor las respuestas guardadas localmente en el dispositivo.
+    </p>
+
+    <div
+      class="mt-3 rounded-xl px-4 py-3 text-sm font-semibold"
+      [class.bg-success-bg]="totalPendientes() === 0"
+      [class.text-success]="totalPendientes() === 0"
+      [class.bg-danger-bg]="totalPendientes() > 0"
+      [class.text-danger]="totalPendientes() > 0">
+      @if (totalPendientes() === 0) {
+        Sin respuestas pendientes
+      } @else {
+        {{ totalPendientes() }} {{ totalPendientes() === 1 ? 'elemento pendiente' : 'elementos pendientes' }} de envío
+      }
+    </div>
+
+    @if (!enLinea()) {
+      <p class="mt-2 text-xs font-medium text-danger">Necesitas conexión a internet</p>
+    }
+
+    <button
+      type="button"
+      (click)="subir()"
+      [disabled]="!puedeSubir()"
+      class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-all active:scale-[0.98] disabled:opacity-50">
+      <mat-icon class="!text-lg !h-5 !w-5" [class.animate-spin]="ocupado()">
+        {{ ocupado() ? 'sync' : 'upload' }}
+      </mat-icon>
+      Subir respuestas
+    </button>
+  </card>
+
+  <!-- Borrar caché -->
+  <card class="mt-4 block" [conBorde]="true">
+    <div class="flex items-start gap-3">
+      <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-danger-bg text-danger" aria-hidden="true">
+        <mat-icon class="!text-2xl">warning</mat-icon>
+      </div>
+      <div class="min-w-0 flex-1">
+        <h3 class="text-base font-bold text-text">Borrar caché</h3>
+      </div>
+    </div>
+
+    <p class="mt-3 text-sm text-text-muted">
+      Elimina los recursos del sistema descargados y todas las respuestas del dispositivo,
+      incluyendo las pendientes de envío.
+    </p>
+
+    <button
+      type="button"
+      (click)="abrirConfirmacionBorrado()"
+      [disabled]="ocupado()"
+      class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-danger px-4 py-3 text-sm font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-50">
+      <mat-icon class="!text-lg !h-5 !w-5">delete</mat-icon>
+      Borrar caché
+    </button>
+  </card>
+
+    </div>
+  </div>
+</div>
+
+<!-- Confirmación de borrado -->
+@if (confirmandoBorrado()) {
+  <div class="fixed inset-0 z-[500] flex items-center justify-center px-6">
+    <div class="absolute inset-0 bg-black/50" (click)="cancelarBorrado()" aria-hidden="true"></div>
+
+    <div class="relative z-10 w-full max-w-sm rounded-3xl bg-surface p-6 shadow-2xl" role="alertdialog" aria-modal="true">
+      <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-danger-bg text-danger">
+        <mat-icon class="!text-3xl !h-8 !w-8">warning</mat-icon>
+      </div>
+
+      @if (totalPendientes() > 0) {
+        <h3 class="text-center text-lg font-bold text-text">Vas a perder trabajo sin enviar</h3>
+        <p class="mt-2 text-center text-sm text-text-muted">
+          Tienes {{ respuestasPendientes() }}
+          {{ respuestasPendientes() === 1 ? 'respuesta' : 'respuestas' }} y
+          {{ reportesPendientes() }}
+          {{ reportesPendientes() === 1 ? 'reporte' : 'reportes' }} sin enviar.
+          Si borras la caché se perderán para siempre.
+        </p>
+      } @else {
+        <h3 class="text-center text-lg font-bold text-text">¿Estás seguro de eliminar la caché del dispositivo?</h3>
+      }
+
+      <div class="mt-6 flex gap-3">
+        <button
+          type="button"
+          (click)="cancelarBorrado()"
+          class="flex-1 rounded-xl bg-surface-alt px-4 py-3 text-sm font-semibold text-text transition-all active:scale-[0.98]">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          (click)="confirmarBorrado()"
+          class="flex-1 rounded-xl bg-danger px-4 py-3 text-sm font-semibold text-white transition-all active:scale-[0.98]">
+          {{ totalPendientes() > 0 ? 'Borrar de todos modos' : 'Borrar caché' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
