@@ -1,7 +1,6 @@
-import { inject, Injectable, effect } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ConnectionService } from '../db/services/connection.service';
-import { SyncService } from '../db/services/sync.service';
 import { dbLocal, ReporteOffline, reporteOfflineAPayload } from '../db/offline-db';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -13,19 +12,9 @@ import { AuthService } from './auth.service';
 export class ReporteService {
   private http = inject(HttpClient);
   private connectionService = inject(ConnectionService);
-  private syncService = inject(SyncService);
   private authService = inject(AuthService);
 
   private readonly API_URL = `${environment.apiUrl}/requerimientos`;
-
-  constructor() {
-    // Cada vez que el dispositivo recupera conexión, intenta subir lo guardado en Dexie
-    effect(() => {
-      if (this.connectionService.isOnline()) {
-        this.syncService.sincronizarReportesPendientes();
-      }
-    });
-  }
 
   // Método unificado que llama el componente Reportar.
   // Las coordenadas viajan crudas (WGS84) y la foto en base64: el backend calcula X/Y (UTM)

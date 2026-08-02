@@ -4,16 +4,6 @@
     <h2 class="text-xl font-extrabold text-text">Panel de Control Tecnico</h2>
     <p class="text-sm text-text-muted mt-0.5 truncate">Hola, {{ nombreTecnico }}</p>
   </div>
-  @if (mostrarBotonDescarga()) {
-    <button
-      type="button"
-      (click)="descargarTareas()"
-      [disabled]="descargandoTareas()"
-      class="flex shrink-0 items-center gap-1.5 rounded-full bg-danger px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-all active:scale-95 disabled:opacity-70">
-      <mat-icon class="!text-base !h-4 !w-4" [class.animate-spin]="descargandoTareas()">{{ descargandoTareas() ? 'sync' : 'download' }}</mat-icon>
-      {{ descargandoTareas() ? 'Espera, descargando...' : 'Descargar Tareas' }}
-    </button>
-  }
 </div>
 
 <!-- Conteos -->
@@ -74,15 +64,14 @@
       }
     </span>
   </div>
-  @if (pendientesSincronizar() > 0) {
-    <button
-      type="button"
-      (click)="subirReporte()"
-      [disabled]="subiendoReporte()"
-      class="shrink-0 text-xs font-bold text-danger underline-offset-2 hover:underline disabled:opacity-60">
-      {{ subiendoReporte() ? 'Subiendo...' : 'Subir ahora' }}
-    </button>
-  }
+  <button
+    type="button"
+    (click)="irASincronizacion()"
+    class="shrink-0 text-xs font-bold underline-offset-2 hover:underline"
+    [class.text-success]="pendientesSincronizar() === 0"
+    [class.text-danger]="pendientesSincronizar() > 0">
+    Sincronizar
+  </button>
 </div>
 
 <!-- Tareas pendientes -->
