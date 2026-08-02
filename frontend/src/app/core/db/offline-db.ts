@@ -146,20 +146,9 @@ export class OfflineAppDB extends Dexie {
  * @returns Número de tareas migradas
  */
 export async function migrarTareasAV9(tx: Transaction): Promise<number> {
-  // Obtener todas las tareas de la versión anterior (v8)
-  const tareas = await tx.table('tareasTecnicoOff').toArray();
-
-  // Añadir el campo pendienteSubir = 0 a cada tarea
-  let migracionesRealizadas = 0;
-  for (const tarea of tareas) {
-    if (tarea.pendienteSubir === undefined) {
-      tarea.pendienteSubir = 0;
-      await tx.table('tareasTecnicoOff').put(tarea);
-      migracionesRealizadas++;
-    }
-  }
-
-  return migracionesRealizadas;
+  return tx.table('tareasTecnicoOff').toCollection().modify(tarea => {
+    tarea.pendienteSubir = 0;
+  });
 }
 
 export const dbLocal = new OfflineAppDB();

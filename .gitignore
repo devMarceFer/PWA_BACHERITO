@@ -52,3 +52,5 @@
 #backend
 /backend/node_modules
 /backend/.env
+# Workspace de scratch del proceso SDD (briefs, reportes, paquetes de revision)
+.superpowers/

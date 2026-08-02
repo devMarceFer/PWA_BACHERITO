@@ -1,13 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import Dexie, { Table, Transaction } from 'dexie';
-import 'fake-indexeddb/auto';
+import Dexie, { Transaction } from 'dexie';
 import {
   OfflineAppDB,
   TareaTecnicoOffline,
   MetaSync,
   ClaveMetaSync,
-  migrarTareasAV9,
-  dbLocal
+  migrarTareasAV9
 } from './offline-db';
 
 describe('OfflineAppDB - Versión 9: pendienteSubir y metaSyncOff', () => {
@@ -106,6 +104,10 @@ describe('OfflineAppDB - Versión 9: pendienteSubir y metaSyncOff', () => {
       await db.metaSyncOff.put({ clave: 'ultimaDescarga', valor: timestamp2 });
       const meta2 = await db.metaSyncOff.get('ultimaDescarga');
       expect(meta2?.valor).toBe(timestamp2);
+    });
+
+    it('devuelve undefined si la clave nunca se escribió', async () => {
+      expect(await db.metaSyncOff.get('ultimoEnvio')).toBeUndefined();
     });
   });
 
