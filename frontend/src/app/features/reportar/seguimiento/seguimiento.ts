@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, OnDestroy, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -91,6 +91,18 @@ export class SeguimientoComponent implements AfterViewInit, OnDestroy {
 
   // Coordenada por defecto centrada en Ambato, Ecuador
   private readonly defaultCoords: [number, number] = [-1.24908, -78.62722];
+
+  constructor() {
+    // El banner de "cambio pendiente" (seguimiento.html) aparece/desaparece arriba del mapa y le
+    // cambia la altura visible al contenedor, pero Leaflet no se entera solo: sin invalidateSize()
+    // el mapa se queda con el tamaño viejo hasta el próximo pan/zoom y deja una franja sin pintar.
+    // Se difiere al próximo tick para que el navegador ya haya aplicado el nuevo layout del banner.
+    effect(() => {
+      this.avisoPendiente();
+      if (!this.map) return;
+      setTimeout(() => this.map?.invalidateSize(), 0);
+    });
+  }
 
   ngAfterViewInit() {
     this.inicializarMapa();
@@ -256,7 +268,12 @@ export class SeguimientoComponent implements AfterViewInit, OnDestroy {
     if (!tarea) return;
 
     this.guardando.set(true);
-    const { subido } = await this.misTareasService.cambiarEstado(tarea.idRequerimiento, nuevoEstado);
+    const { subido } = await this.misTareasService.cambiarEstado(tarea.idRequerimiento, nuevoEstado, {
+      nombreReporto: tarea.nombre,
+      coordenadaX: tarea.coordenadaX,
+      coordenadaY: tarea.coordenadaY,
+      fechaIngreso: tarea.fechaIngreso
+    });
     this.guardando.set(false);
     this.cerrarPopup();
     await this.cargarTareas();

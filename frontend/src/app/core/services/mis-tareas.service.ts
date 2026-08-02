@@ -89,7 +89,16 @@ export class MisTareasService {
   //
   // Devuelve si el cambio llegó al servidor (subido=true) o quedó pendiente (subido=false), para
   // que quien llama (seguimiento.ts) pueda avisarle al técnico que todavía falta enviarlo.
-  async cambiarEstado(idRequerimiento: number, nuevoEstado: 'A' | 'E'): Promise<{ subido: boolean }> {
+  //
+  // datosTarea: datos de presentación (nombre, coordenadas, fecha) de la tarea, tal como los
+  // tiene quien llama. Solo se usan si hay que crear una fila de cola nueva (ver más abajo);
+  // sin ellos esa fila queda con valores vacíos/cero, así que se recomienda pasarlos siempre que
+  // se tengan a mano.
+  async cambiarEstado(
+    idRequerimiento: number,
+    nuevoEstado: 'A' | 'E',
+    datosTarea?: { nombreReporto: string; coordenadaX: number; coordenadaY: number; fechaIngreso: string }
+  ): Promise<{ subido: boolean }> {
     let pendienteSubir: 0 | 1 = 1;
 
     if (this.connectionService.isOnline()) {
@@ -108,17 +117,18 @@ export class MisTareasService {
 
     // La tarea puede no estar en la copia local: el mapa de seguimiento se alimenta de la lista
     // en vivo del servidor, no de tareasTecnicoOff. Si el cambio quedó pendiente y no había fila
-    // que actualizar, se crea una entrada de cola para no perderlo (bug B4). Los campos de
-    // presentación quedan vacíos a propósito: esta fila solo existe para cargar la respuesta
-    // pendiente, y la próxima descargarTareas() reemplaza toda la tabla de todos modos.
+    // que actualizar, se crea una entrada de cola para no perderlo (bug B4). Se usan los datos de
+    // presentación de quien llama (datosTarea) para que esta fila se pueda mostrar de verdad en
+    // las pantallas que caen a tareasTecnicoOff sin conexión (mis-tareas, panel-tecnico,
+    // seguimiento); si no se recibieron, se guardan vacíos/cero como respaldo.
     if (filasActualizadas === 0 && pendienteSubir === 1) {
       await dbLocal.tareasTecnicoOff.add({
         idRequerimiento,
         estado: nuevoEstado,
-        nombreReporto: '',
-        coordenadaX: 0,
-        coordenadaY: 0,
-        fechaIngreso: '',
+        nombreReporto: datosTarea?.nombreReporto ?? '',
+        coordenadaX: datosTarea?.coordenadaX ?? 0,
+        coordenadaY: datosTarea?.coordenadaY ?? 0,
+        fechaIngreso: datosTarea?.fechaIngreso ?? '',
         pendienteSubir: 1
       });
     }

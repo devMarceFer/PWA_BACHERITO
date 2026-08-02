@@ -111,6 +111,33 @@ describe('MisTareasService', () => {
       expect(await servicio.contarRespuestasPendientes()).toBe(1);
     });
 
+    // Regresión del fix de la fila en blanco: antes la fila de cola se creaba con nombreReporto/
+    // coordenadas/fecha vacíos o en 0, y esa fila terminaba pintándose tal cual en mis-tareas,
+    // panel-tecnico y el mapa de seguimiento (marcador en [0, 0]) mientras no hubiera conexión.
+    // Quien llama (seguimiento.ts) ya tiene los datos reales de la tarea, así que deben usarse en
+    // vez de los valores por defecto.
+    it('online + PATCH falla + la tarea no está en la copia local: la fila de cola usa los datos reales recibidos, no valores vacíos', async () => {
+      httpFalso.patch.mockImplementation(() => throwError(() => new Error('500')));
+
+      const resultado = await servicio.cambiarEstado(57, 'A', {
+        nombreReporto: 'Juan Pérez',
+        coordenadaX: -78.62722,
+        coordenadaY: -1.24908,
+        fechaIngreso: '2026-08-01'
+      });
+
+      expect(resultado).toEqual({ subido: false });
+      const tarea = await dbLocal.tareasTecnicoOff.where('idRequerimiento').equals(57).first();
+      expect(tarea).toBeDefined();
+      expect(tarea?.nombreReporto).toBe('Juan Pérez');
+      expect(tarea?.coordenadaX).toBe(-78.62722);
+      expect(tarea?.coordenadaY).toBe(-1.24908);
+      expect(tarea?.fechaIngreso).toBe('2026-08-01');
+      expect(tarea?.estado).toBe('A');
+      expect(tarea?.pendienteSubir).toBe(1);
+      expect(await servicio.contarRespuestasPendientes()).toBe(1);
+    });
+
     it('la fila de cola creada para una tarea ausente sí se puede subir con subirRespuestasPendientes', async () => {
       httpFalso.patch.mockImplementationOnce(() => throwError(() => new Error('500')));
       await servicio.cambiarEstado(57, 'A');
