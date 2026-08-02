@@ -71,16 +71,20 @@
             <mat-icon class="!text-xl !h-5 !w-5">assignment</mat-icon>
             Mis Tareas
           </a>
-
-          <a
-            routerLink="/sincronizacion"
-            routerLinkActive="bg-primary-soft !text-primary font-bold"
-            (click)="cerrar()"
-            class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-text-muted transition-all duration-150 hover:bg-surface-alt active:scale-[0.98]">
-            <mat-icon class="!text-xl !h-5 !w-5">settings</mat-icon>
-            Sincronizar
-          </a>
         }
+
+        <!-- Visible para cualquier usuario autenticado: quien solo tiene REPORTAR_BACHE también
+             necesita poder subir sus reportes offline desde aquí (no hay otra pantalla que lo haga
+             desde que se quitó el auto-sync). Las tarjetas que requieren MIS_TAREAS se ocultan
+             dentro de la propia pantalla de sincronización. -->
+        <a
+          routerLink="/sincronizacion"
+          routerLinkActive="bg-primary-soft !text-primary font-bold"
+          (click)="cerrar()"
+          class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-text-muted transition-all duration-150 hover:bg-surface-alt active:scale-[0.98]">
+          <mat-icon class="!text-xl !h-5 !w-5">settings</mat-icon>
+          Sincronizar
+        </a>
 
         <a
           routerLink="/perfil"

@@ -78,8 +78,12 @@ export const routes: Routes = [
   },
 
   {
+    // Visible para cualquier usuario autenticado (no solo MIS_TAREAS): un usuario con solo
+    // REPORTAR_BACHE también necesita poder subir sus reportes offline, y esta es la única
+    // pantalla que lo hace desde que se quitó el auto-sync. Las tarjetas que sí requieren el
+    // módulo MIS_TAREAS (Descargar Recursos) se ocultan dentro del propio componente.
     path: 'sincronizacion',
-    canActivate: [authGuard, moduloGuard('MIS_TAREAS')], // 🛡️ Protegido
+    canActivate: [authGuard], // 🛡️ Protegido
     loadComponent: () => import('./features/sincronizacion/sincronizacion').then(m => m.SincronizacionComponent)
   },
 

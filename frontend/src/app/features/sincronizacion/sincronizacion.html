@@ -56,46 +56,49 @@
     </card>
   </div>
 
-  <!-- Descargar recursos -->
-  <card class="mt-4 block">
-    <div class="flex items-start gap-3">
-      <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400" aria-hidden="true">
-        <mat-icon class="!text-2xl">download</mat-icon>
+  <!-- Descargar recursos: solo para quien tiene el módulo MIS_TAREAS (GET /api/mis-tareas
+       responde 403 para cualquier otro usuario) -->
+  @if (puedeDescargarRecursos()) {
+    <card class="mt-4 block">
+      <div class="flex items-start gap-3">
+        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400" aria-hidden="true">
+          <mat-icon class="!text-2xl" aria-hidden="true">download</mat-icon>
+        </div>
+        <div class="min-w-0 flex-1">
+          <h3 class="text-base font-bold text-text">Descargar Recursos del sistema</h3>
+          <p class="mt-0.5 text-xs text-text-muted">
+            Última descarga:
+            {{ ultimaDescarga() ? (ultimaDescarga() | date:'dd/MM/yyyy HH:mm') : 'Nunca' }}
+          </p>
+        </div>
       </div>
-      <div class="min-w-0 flex-1">
-        <h3 class="text-base font-bold text-text">Descargar Recursos del sistema</h3>
-        <p class="mt-0.5 text-xs text-text-muted">
-          Última descarga:
-          {{ ultimaDescarga() ? (ultimaDescarga() | date:'dd/MM/yyyy HH:mm') : 'Nunca' }}
-        </p>
-      </div>
-    </div>
 
-    <p class="mt-3 text-sm text-text-muted">
-      Trae los recursos del sistema para trabajar sin conexión.
-    </p>
+      <p class="mt-3 text-sm text-text-muted">
+        Trae los recursos del sistema para trabajar sin conexión.
+      </p>
 
-    @if (motivoBloqueoDescarga(); as motivo) {
-      <p class="mt-2 text-xs font-medium text-danger">{{ motivo }}</p>
-    }
+      @if (motivoBloqueoDescarga(); as motivo) {
+        <p class="mt-2 text-xs font-medium text-danger">{{ motivo }}</p>
+      }
 
-    <button
-      type="button"
-      (click)="descargar()"
-      [disabled]="!puedeDescargar()"
-      class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-all active:scale-[0.98] disabled:opacity-50">
-      <mat-icon class="!text-lg !h-5 !w-5" [class.animate-spin]="ocupado()">
-        {{ ocupado() ? 'sync' : 'download' }}
-      </mat-icon>
-      Descargar
-    </button>
-  </card>
+      <button
+        type="button"
+        (click)="descargar()"
+        [disabled]="!puedeDescargar()"
+        class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-all active:scale-[0.98] disabled:opacity-50">
+        <mat-icon class="!text-lg !h-5 !w-5" [class.animate-spin]="ocupado()">
+          {{ ocupado() ? 'sync' : 'download' }}
+        </mat-icon>
+        Descargar
+      </button>
+    </card>
+  }
 
   <!-- Subir respuestas -->
   <card class="mt-4 block">
     <div class="flex items-start gap-3">
       <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 dark:bg-teal-950/20 dark:text-teal-400" aria-hidden="true">
-        <mat-icon class="!text-2xl">upload_file</mat-icon>
+        <mat-icon class="!text-2xl" aria-hidden="true">upload_file</mat-icon>
       </div>
       <div class="min-w-0 flex-1">
         <h3 class="text-base font-bold text-text">Subir respuesta</h3>
@@ -169,14 +172,16 @@
   </div>
 </div>
 
-<!-- Confirmación de borrado -->
+<!-- Primera confirmación de borrado. Sin pendientes, "Borrar caché" ejecuta el borrado de una vez.
+     Con pendientes, "Borrar de todos modos" no borra nada todavía: abre la segunda confirmación
+     (owner decision, spec D4 / criterio de aceptación 7). -->
 @if (confirmandoBorrado()) {
   <div class="fixed inset-0 z-[500] flex items-center justify-center px-6">
     <div class="absolute inset-0 bg-black/50" (click)="cancelarBorrado()" aria-hidden="true"></div>
 
     <div class="relative z-10 w-full max-w-sm rounded-3xl bg-surface p-6 shadow-2xl" role="alertdialog" aria-modal="true">
       <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-danger-bg text-danger">
-        <mat-icon class="!text-3xl !h-8 !w-8">warning</mat-icon>
+        <mat-icon class="!text-3xl !h-8 !w-8" aria-hidden="true">warning</mat-icon>
       </div>
 
       @if (totalPendientes() > 0) {
@@ -201,9 +206,47 @@
         </button>
         <button
           type="button"
-          (click)="confirmarBorrado()"
+          (click)="continuarBorrado()"
           class="flex-1 rounded-xl bg-danger px-4 py-3 text-sm font-semibold text-white transition-all active:scale-[0.98]">
           {{ totalPendientes() > 0 ? 'Borrar de todos modos' : 'Borrar caché' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Segunda confirmación (solo con pendientes): restata lo que se va a perder y exige una
+     confirmación explícita adicional antes de ejecutar borrarCache(). -->
+@if (confirmandoBorradoFinal()) {
+  <div class="fixed inset-0 z-[500] flex items-center justify-center px-6">
+    <div class="absolute inset-0 bg-black/50" (click)="cancelarBorrado()" aria-hidden="true"></div>
+
+    <div class="relative z-10 w-full max-w-sm rounded-3xl bg-surface p-6 shadow-2xl" role="alertdialog" aria-modal="true">
+      <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-danger-bg text-danger">
+        <mat-icon class="!text-3xl !h-8 !w-8" aria-hidden="true">warning</mat-icon>
+      </div>
+
+      <h3 class="text-center text-lg font-bold text-text">Última confirmación</h3>
+      <p class="mt-2 text-center text-sm text-text-muted">
+        Se perderán para siempre {{ respuestasPendientes() }}
+        {{ respuestasPendientes() === 1 ? 'respuesta' : 'respuestas' }} y
+        {{ reportesPendientes() }}
+        {{ reportesPendientes() === 1 ? 'reporte' : 'reportes' }} que aún no se enviaron al servidor.
+        Esta acción no se puede deshacer.
+      </p>
+
+      <div class="mt-6 flex gap-3">
+        <button
+          type="button"
+          (click)="cancelarBorrado()"
+          class="flex-1 rounded-xl bg-surface-alt px-4 py-3 text-sm font-semibold text-text transition-all active:scale-[0.98]">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          (click)="confirmarBorrado()"
+          class="flex-1 rounded-xl bg-danger px-4 py-3 text-sm font-semibold text-white transition-all active:scale-[0.98]">
+          Sí, borrar todo
         </button>
       </div>
     </div>
