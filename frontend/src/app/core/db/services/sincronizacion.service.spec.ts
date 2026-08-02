@@ -30,7 +30,7 @@ describe('SincronizacionService', () => {
     subirRespuestasPendientes: ReturnType<typeof vi.fn>;
     contarRespuestasPendientes: ReturnType<typeof vi.fn>;
   };
-  let parroquiasFalso: { obtenerParroquias: ReturnType<typeof vi.fn> };
+  let parroquiasFalso: { descargarParroquias: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     await dbLocal.reportesOff.clear();
@@ -44,7 +44,7 @@ describe('SincronizacionService', () => {
       subirRespuestasPendientes: vi.fn(async () => ({ enviados: 0, fallidos: 0 })),
       contarRespuestasPendientes: vi.fn(async () => dbLocal.tareasTecnicoOff.where('pendienteSubir').equals(1).count())
     };
-    parroquiasFalso = { obtenerParroquias: vi.fn(async () => []) };
+    parroquiasFalso = { descargarParroquias: vi.fn(async () => undefined) };
 
     TestBed.configureTestingModule({
       providers: [
@@ -91,12 +91,26 @@ describe('SincronizacionService', () => {
 
       expect(resultado.ok).toBe(true);
       expect(misTareasFalso.descargarTareas).toHaveBeenCalledTimes(1);
-      expect(parroquiasFalso.obtenerParroquias).toHaveBeenCalledTimes(1);
+      expect(parroquiasFalso.descargarParroquias).toHaveBeenCalledTimes(1);
       expect(servicio.ultimaDescarga()).not.toBeNull();
     });
 
     it('no guarda la fecha si la descarga falla', async () => {
       misTareasFalso.descargarTareas.mockImplementation(async () => { throw new Error('sin red'); });
+
+      const resultado = await servicio.descargarRecursos();
+
+      expect(resultado.ok).toBe(false);
+      expect(servicio.ultimaDescarga()).toBeNull();
+    });
+
+    // IMPORTANTE 1: obtenerParroquias() nunca rechaza (cae a la copia local en silencio), así que
+    // descargarRecursos() debe usar descargarParroquias(), que sí propaga el fallo. Si el catálogo
+    // nunca llegó, la pantalla no puede decir "Recursos descargados".
+    it('no guarda la fecha si la descarga del catálogo de parroquias falla', async () => {
+      parroquiasFalso.descargarParroquias.mockImplementation(async () => {
+        throw new Error('No se pudo descargar el catálogo de parroquias.');
+      });
 
       const resultado = await servicio.descargarRecursos();
 
@@ -135,17 +149,33 @@ describe('SincronizacionService', () => {
       expect(resultado.mensaje).toBe('Se enviaron 4 de 6. Quedan 2 pendientes.');
       expect(servicio.ultimoEnvio()).toBeNull();
     });
+
+    // IMPORTANTE 3: si la consulta que arma la lista de pendientes rechaza directamente (IndexedDB
+    // bloqueada por otra pestaña, base cerrada, cuota excedida) — no un fallo por ítem, que ya
+    // manejan MisTareasService/SyncService — el botón no debe quedarse "muerto" con una promesa
+    // rechazada sin capturar.
+    it('no revienta si falla la consulta de pendientes: devuelve ok=false con un mensaje', async () => {
+      misTareasFalso.subirRespuestasPendientes.mockImplementation(async () => {
+        throw new Error('IndexedDB bloqueada');
+      });
+
+      const resultado = await servicio.subirRespuestas();
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.mensaje).toBe('No se pudieron enviar los datos. Intenta de nuevo.');
+    });
   });
 
   describe('borrarCache', () => {
-    it('vacía las cuatro tablas y deja los contadores en cero', async () => {
+    it('vacía las cuatro tablas, deja los contadores en cero y devuelve ok=true', async () => {
       await dbLocal.reportesOff.bulkAdd([reporte(0), reporte(1)]);
       await dbLocal.tareasTecnicoOff.add(tarea(57, 1));
       await dbLocal.parroquiasOff.add({ codigo: 1, nombre: 'Matriz' });
       await dbLocal.metaSyncOff.put({ clave: 'ultimaDescarga', valor: 1754150400000 });
 
-      await servicio.borrarCache();
+      const resultado = await servicio.borrarCache();
 
+      expect(resultado.ok).toBe(true);
       expect(await dbLocal.reportesOff.count()).toBe(0);
       expect(await dbLocal.tareasTecnicoOff.count()).toBe(0);
       expect(await dbLocal.parroquiasOff.count()).toBe(0);

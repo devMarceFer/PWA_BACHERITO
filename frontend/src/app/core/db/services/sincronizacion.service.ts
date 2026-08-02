@@ -52,7 +52,9 @@ export class SincronizacionService {
     this._ocupado.set(true);
     try {
       await this.misTareasService.descargarTareas();
-      await this.parroquiaService.obtenerParroquias();
+      // Se usa descargarParroquias() (no obtenerParroquias()) a propósito: esta sí propaga el
+      // error si el catálogo nunca llegó, para no escribir ultimaDescarga con datos a medias.
+      await this.parroquiaService.descargarParroquias();
       await this.escribirMeta('ultimaDescarga', Date.now());
       return { ok: true, mensaje: 'Recursos descargados. Ya puedes trabajar sin conexión.' };
     } catch (error) {
@@ -60,7 +62,7 @@ export class SincronizacionService {
       return { ok: false, mensaje: 'No se pudieron descargar los recursos. Verifica tu conexión.' };
     } finally {
       this._ocupado.set(false);
-      await this.refrescarContadores();
+      await this.refrescarContadoresSeguro();
     }
   }
 
@@ -88,20 +90,34 @@ export class SincronizacionService {
 
       await this.escribirMeta('ultimoEnvio', Date.now());
       return { ok: true, mensaje: `Se enviaron ${enviados} elementos.` };
+    } catch (error) {
+      // dbLocal.tareasTecnicoOff.where(...).toArray() (o el de reportesOff) puede rechazar por sí
+      // solo (IndexedDB bloqueada por otra pestaña, base cerrada, cuota excedida), fuera de los
+      // catch por ítem que ya maneja MisTareasService/SyncService. Sin esto, el botón "moría"
+      // en silencio: promesa rechazada sin capturar, mensaje nunca se actualiza.
+      console.error('No se pudieron subir los datos pendientes:', error);
+      return { ok: false, mensaje: 'No se pudieron enviar los datos. Intenta de nuevo.' };
     } finally {
       this._ocupado.set(false);
-      await this.refrescarContadores();
+      await this.refrescarContadoresSeguro();
     }
   }
 
   // Borra los datos del dispositivo. No cierra la sesión (el JWT vive en localStorage) ni toca
   // el caché del service worker: la app sigue instalada y abriendo sin conexión.
-  async borrarCache(): Promise<void> {
-    await dbLocal.reportesOff.clear();
-    await dbLocal.tareasTecnicoOff.clear();
-    await dbLocal.parroquiasOff.clear();
-    await dbLocal.metaSyncOff.clear();
-    await this.refrescarContadores();
+  async borrarCache(): Promise<{ ok: boolean; mensaje: string }> {
+    try {
+      await dbLocal.reportesOff.clear();
+      await dbLocal.tareasTecnicoOff.clear();
+      await dbLocal.parroquiasOff.clear();
+      await dbLocal.metaSyncOff.clear();
+      return { ok: true, mensaje: 'Se eliminaron los datos del dispositivo.' };
+    } catch (error) {
+      console.error('No se pudo borrar la caché del dispositivo:', error);
+      return { ok: false, mensaje: 'No se pudo borrar la caché. Intenta de nuevo.' };
+    } finally {
+      await this.refrescarContadoresSeguro();
+    }
   }
 
   private async leerMeta(clave: ClaveMetaSync): Promise<number | null> {
@@ -110,5 +126,16 @@ export class SincronizacionService {
 
   private async escribirMeta(clave: ClaveMetaSync, valor: number): Promise<void> {
     await dbLocal.metaSyncOff.put({ clave, valor });
+  }
+
+  // refrescarContadores() puede fallar (IndexedDB bloqueada, cuota, etc.). Si eso pasara dentro de
+  // un `finally`, la excepción reemplazaría el resultado real de la operación (descarga/subida/
+  // borrado), ocultando si esa operación en sí funcionó. Se aísla aquí a propósito.
+  private async refrescarContadoresSeguro(): Promise<void> {
+    try {
+      await this.refrescarContadores();
+    } catch (error) {
+      console.error('No se pudieron refrescar los contadores de sincronización:', error);
+    }
   }
 }

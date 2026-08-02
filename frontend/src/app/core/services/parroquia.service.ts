@@ -38,4 +38,24 @@ export class ParroquiaService {
     console.log(`📱 Se cargaron ${datosLocales.length} parroquias desde el almacenamiento local.`);
     return datosLocales;
   }
+
+  /**
+   * Descarga el catálogo de parroquias para trabajar sin conexión, usado exclusivamente por el
+   * flujo de /sincronizacion. A diferencia de obtenerParroquias(), aquí SÍ se propaga el error:
+   * la pantalla de Sincronización no debe decir "descargado" si el catálogo nunca llegó de verdad
+   * (obtenerParroquias() no puede usarse para eso porque nunca rechaza, cae de vuelta a lo que ya
+   * hubiera en el dispositivo y otras pantallas, como "Reportar un bache", dependen de ese
+   * comportamiento silencioso).
+   */
+  async descargarParroquias(cantonId: string = '184'): Promise<void> {
+    const response = await fetch(`${this.API_URL}?canton=${cantonId}`);
+    const resultado = await response.json();
+
+    if (!resultado.success || !resultado.data || resultado.data.length === 0) {
+      throw new Error('No se pudo descargar el catálogo de parroquias.');
+    }
+
+    await dbLocal.parroquiasOff.clear();
+    await dbLocal.parroquiasOff.bulkPut(resultado.data);
+  }
 }
