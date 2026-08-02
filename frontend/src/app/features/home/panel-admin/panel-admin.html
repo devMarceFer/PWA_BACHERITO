@@ -68,13 +68,12 @@
       }
     </span>
   </div>
-  @if (pendientesSincronizar() > 0) {
-    <button
-      type="button"
-      (click)="subirReporte()"
-      [disabled]="subiendoReporte()"
-      class="shrink-0 text-xs font-bold text-danger underline-offset-2 hover:underline disabled:opacity-60">
-      {{ subiendoReporte() ? 'Subiendo...' : 'Subir ahora' }}
-    </button>
-  }
+  <button
+    type="button"
+    (click)="irASincronizacion()"
+    class="shrink-0 text-xs font-bold underline-offset-2 hover:underline"
+    [class.text-success]="pendientesSincronizar() === 0"
+    [class.text-danger]="pendientesSincronizar() > 0">
+    Sincronizar
+  </button>
 </div>

@@ -6,7 +6,6 @@ import { CardComponent } from '../../../shared/components/card/card.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { AsignarGrupoService } from '../../admin/asignar-grupo/asignar-grupo.service';
 import { ReporteService } from '../../../core/services/reporte.service';
-import { SyncService } from '../../../core/db/services/sync.service';
 import { MisTareasService } from '../../../core/services/mis-tareas.service';
 
 @Component({
@@ -24,7 +23,6 @@ export class PanelAdminComponent implements OnInit {
   private authService = inject(AuthService);
   private asignarGrupoService = inject(AsignarGrupoService);
   private reporteService = inject(ReporteService);
-  private syncService = inject(SyncService);
   private misTareasService = inject(MisTareasService);
 
   cargando = signal(false);
@@ -37,7 +35,6 @@ export class PanelAdminComponent implements OnInit {
   // Antes solo contaba reportes, así que la barra podía decir "Todo sincronizado" con respuestas de
   // "Atendido"/"Mantenimiento" sin enviar (mismo bug ya corregido en panel-tecnico).
   pendientesSincronizar = signal(0);
-  subiendoReporte = signal(false);
 
   get nombreAdmin(): string {
     return this.authService.nombreActual() || this.authService.usuarioActual() || 'Funcionario';
@@ -52,18 +49,12 @@ export class PanelAdminComponent implements OnInit {
     this.router.navigate(['/admin/grupos']);
   }
 
-  async subirReporte() {
-    this.subiendoReporte.set(true);
-
-    const pendientesAntes = this.pendientesSincronizar();
-    await this.syncService.sincronizarReportesPendientes();
-    await this.actualizarPendientesSincronizar();
-
-    this.subiendoReporte.set(false);
-
-    if (this.pendientesSincronizar() === pendientesAntes && pendientesAntes > 0) {
-      alert('No se pudo subir el reporte. Verifica tu conexión e intenta de nuevo.');
-    }
+  // Un solo camino de sincronización en toda la app: igual que panel-tecnico, este botón ya no
+  // sube nada directamente (ese botón no conocía la cola de respuestas y podía disparar un
+  // alert() de error sin que nada hubiera fallado). Ahora solo lleva a /sincronizacion, que sí
+  // sabe subir reportes y respuestas juntos.
+  irASincronizacion() {
+    this.router.navigate(['/sincronizacion']);
   }
 
   private async actualizarPendientesSincronizar() {
