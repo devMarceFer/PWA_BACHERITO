@@ -83,20 +83,52 @@ export class MisTareasService {
     return (await dbLocal.tareasTecnicoOff.count()) > 0;
   }
 
-  // Si hay conexión, cambia el estado directamente en el servidor y refleja el cambio localmente.
-  // Sin conexión: NOTA para QA — tareasTecnicoOff ya no tiene un campo de "pendiente de subir"
-  // (se quitó al simplificar el esquema a solo los campos pedidos), así que cambiar el estado
-  // offline solo actualiza la vista local; ese cambio no se reenvía al servidor al reconectar.
+  // Cambia el estado del bache. Con conexión intenta subirlo de una vez; si no hay conexión o el
+  // servidor falla, el cambio queda guardado localmente con pendienteSubir=1 y se envía después
+  // desde /sincronizacion. Antes de esto el cambio offline se perdía para siempre (bug B4).
   async cambiarEstado(idRequerimiento: number, nuevoEstado: 'A' | 'E'): Promise<void> {
+    let pendienteSubir: 0 | 1 = 1;
+
     if (this.connectionService.isOnline()) {
       try {
         await firstValueFrom(this.http.patch(`${this.API_URL}/${idRequerimiento}/atender`, { estado: nuevoEstado }));
+        pendienteSubir = 0;
       } catch (error) {
-        console.error('No se pudo actualizar el estado en el servidor:', error);
-        return;
+        console.error('No se pudo actualizar el estado en el servidor, queda pendiente de subir:', error);
       }
     }
 
-    await dbLocal.tareasTecnicoOff.where('idRequerimiento').equals(idRequerimiento).modify({ estado: nuevoEstado });
+    await dbLocal.tareasTecnicoOff
+      .where('idRequerimiento')
+      .equals(idRequerimiento)
+      .modify({ estado: nuevoEstado, pendienteSubir });
+  }
+
+  // Cuántos cambios de estado hechos en este dispositivo todavía no llegaron al servidor.
+  async contarRespuestasPendientes(): Promise<number> {
+    return dbLocal.tareasTecnicoOff.where('pendienteSubir').equals(1).count();
+  }
+
+  // Envía la cola de respuestas. Lo que falla se queda con pendienteSubir=1 para el próximo intento.
+  async subirRespuestasPendientes(): Promise<{ enviados: number; fallidos: number }> {
+    const pendientes = await dbLocal.tareasTecnicoOff.where('pendienteSubir').equals(1).toArray();
+
+    let enviados = 0;
+    let fallidos = 0;
+
+    for (const tarea of pendientes) {
+      try {
+        await firstValueFrom(
+          this.http.patch(`${this.API_URL}/${tarea.idRequerimiento}/atender`, { estado: tarea.estado })
+        );
+        await dbLocal.tareasTecnicoOff.update(tarea.id!, { pendienteSubir: 0 });
+        enviados++;
+      } catch (error) {
+        console.error(`No se pudo subir la respuesta del bache ${tarea.idRequerimiento}:`, error);
+        fallidos++;
+      }
+    }
+
+    return { enviados, fallidos };
   }
 }
