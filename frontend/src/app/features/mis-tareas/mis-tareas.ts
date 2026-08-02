@@ -49,7 +49,8 @@ export class MisTareasComponent implements OnInit {
         nombreReporto: t.nombres,
         coordenadaX: t.coordenadaX,
         coordenadaY: t.coordenadaY,
-        fechaIngreso: t.fechaIngreso
+        fechaIngreso: t.fechaIngreso,
+        pendienteSubir: 0
       })));
     } catch (error) {
       this.tareas.set(await this.misTareasService.obtenerTareasLocales());

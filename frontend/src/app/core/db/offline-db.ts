@@ -1,4 +1,4 @@
-import Dexie, { Table } from 'dexie';
+import Dexie, { Table, Transaction } from 'dexie';
 
 export interface ParroquiaOffline {
   codigo: number;
@@ -59,12 +59,23 @@ export interface TareaTecnicoOffline {
   coordenadaX: number;       // OP_BACHERITO_REQ.COORDENADAX (columna NUMBER en Oracle)
   coordenadaY: number;       // OP_BACHERITO_REQ.COORDENADAY (columna NUMBER en Oracle)
   fechaIngreso: string;      // OP_BACHERITO_REQ.FECHA_INGRESO
+  pendienteSubir: 0 | 1;     // 0 = Ok/sincronizado, 1 = Pendiente de subir al servidor
+}
+
+// Claves para la tabla de metadatos de sincronización
+export type ClaveMetaSync = 'ultimaDescarga' | 'ultimoEnvio';
+
+// Metadatos de sincronización: timestamps de última descarga de tareas y último envío de cambios
+export interface MetaSync {
+  clave: ClaveMetaSync;
+  valor: number;  // Timestamp en milisegundos
 }
 
 export class OfflineAppDB extends Dexie {
   parroquiasOff!: Table<ParroquiaOffline, number>;
   reportesOff!: Table<ReporteOffline, number>;
   tareasTecnicoOff!: Table<TareaTecnicoOffline, number>;
+  metaSyncOff!: Table<MetaSync, string>;
 
   constructor() {
     super('BacheritoOfflineDB');
@@ -114,7 +125,41 @@ export class OfflineAppDB extends Dexie {
     this.version(8).stores({
       estadoBacheOff: null
     });
+
+    // v9: se añade el campo pendienteSubir a tareasTecnicoOff (0 = sincronizado, 1 = pendiente de subir)
+    // y la nueva tabla metaSyncOff para almacenar metadatos de sincronización (últimas fechas de descarga/envío).
+    this.version(9)
+      .stores({
+        tareasTecnicoOff: '++id, idRequerimiento, pendienteSubir',
+        metaSyncOff: 'clave'
+      })
+      .upgrade(migrarTareasAV9);
   }
+}
+
+/**
+ * Migración a v9: añade el campo pendienteSubir a todas las tareas existentes.
+ * Este campo indica si la tarea pendiente de cambio de estado ha sido subida al servidor (0 = sincronizado, 1 = pendiente).
+ * Para las tareas existentes, se asume que están sincronizadas (pendienteSubir = 0).
+ *
+ * @param tx Transacción de Dexie para acceder a las tablas durante la migración
+ * @returns Número de tareas migradas
+ */
+export async function migrarTareasAV9(tx: Transaction): Promise<number> {
+  // Obtener todas las tareas de la versión anterior (v8)
+  const tareas = await tx.table('tareasTecnicoOff').toArray();
+
+  // Añadir el campo pendienteSubir = 0 a cada tarea
+  let migracionesRealizadas = 0;
+  for (const tarea of tareas) {
+    if (tarea.pendienteSubir === undefined) {
+      tarea.pendienteSubir = 0;
+      await tx.table('tareasTecnicoOff').put(tarea);
+      migracionesRealizadas++;
+    }
+  }
+
+  return migracionesRealizadas;
 }
 
 export const dbLocal = new OfflineAppDB();

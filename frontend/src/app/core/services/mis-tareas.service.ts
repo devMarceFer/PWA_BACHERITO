@@ -59,7 +59,8 @@ export class MisTareasService {
       nombreReporto: t.nombres,
       coordenadaX: t.coordenadaX,
       coordenadaY: t.coordenadaY,
-      fechaIngreso: t.fechaIngreso
+      fechaIngreso: t.fechaIngreso,
+      pendienteSubir: 0
     }));
 
     await dbLocal.tareasTecnicoOff.clear();
