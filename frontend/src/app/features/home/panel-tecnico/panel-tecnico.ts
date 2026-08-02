@@ -42,6 +42,9 @@ export class PanelTecnicoComponent implements OnInit {
   huecosResueltos = signal(0);
   tareasPendientesPreview = signal<TareaVista[]>([]);
   // Total de pendientes por sincronizar de este dispositivo: baches reportados offline (reportesOff)
+  // + cambios de estado que quedaron en cola sin llegar al servidor (tareasTecnicoOff.pendienteSubir).
+  // Antes solo contaba reportes, así que la barra podía decir "Todo sincronizado" con respuestas
+  // de "Atendido"/"Mantenimiento" sin enviar (y sin el auto-sync, podían quedarse así para siempre).
   pendientesSincronizar = signal(0);
 
   get nombreTecnico(): string {
@@ -87,7 +90,11 @@ export class PanelTecnicoComponent implements OnInit {
       })));
     }
 
-    this.pendientesSincronizar.set(await this.reporteService.contarPendientesSincronizacion());
+    const [reportesPendientes, respuestasPendientes] = await Promise.all([
+      this.reporteService.contarPendientesSincronizacion(),
+      this.misTareasService.contarRespuestasPendientes()
+    ]);
+    this.pendientesSincronizar.set(reportesPendientes + respuestasPendientes);
   }
 
   // Ingresado/Reasignado -> Pendientes, En proceso -> En progreso, Atendido -> Resueltos
