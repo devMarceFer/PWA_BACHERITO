@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, output, signal } from '@ang
 import { MatIconModule } from '@angular/material/icon';
 import { AccesosService, Acceso, Catalogo, DetalleUsuario, Otorgamiento } from './accesos.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { ToastService } from '../../../shared/services/toast.service';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 
 // El módulo que protege esta misma pantalla: el botón de revocárselo a uno mismo va
@@ -17,6 +18,7 @@ const MODULO_DE_GESTION = 'GESTIONAR_ACCESOS';
 export class AccesosUsuarioComponent {
   private accesosService = inject(AccesosService);
   private authService = inject(AuthService);
+  private toast = inject(ToastService);
 
   idUsuario = input.required<number>();
   cambio = output<void>();
@@ -144,7 +146,7 @@ export class AccesosUsuarioComponent {
   otorgar() {
     const pendientes = this.otorgamientosPendientes();
     if (pendientes.length === 0) {
-      this.errorOtorgar.set('Elige al menos un módulo con su rol.');
+      this.toast.warning('Elige al menos un módulo con su rol.');
       return;
     }
 
@@ -154,14 +156,15 @@ export class AccesosUsuarioComponent {
 
     this.accesosService.otorgar(this.idUsuario(), pendientes).subscribe({
       next: (respuesta) => {
-        this.mensajeExito.set(respuesta.message);
+        this.toast.success('Accesos otorgados. El usuario debe cerrar sesión y volver a entrar.');
         this.guardando.set(false);
         this.seleccion.set(new Map());
         this.cargar(this.idUsuario());
         this.cambio.emit();
       },
       error: (respuesta) => {
-        this.errorOtorgar.set(respuesta?.error?.message ?? 'No se pudieron otorgar los accesos.');
+        const msg = respuesta?.error?.message ?? 'No se pudieron otorgar los accesos.';
+        this.toast.error(msg);
         this.guardando.set(false);
       }
     });
@@ -174,12 +177,14 @@ export class AccesosUsuarioComponent {
 
     this.accesosService.revocar(this.idUsuario(), acceso.idModulo, acceso.idRol).subscribe({
       next: () => {
+        this.toast.success(`Acceso revocado. El usuario debe cerrar sesión y volver a entrar.`);
         this.revocando.set(null);
         this.cargar(this.idUsuario());
         this.cambio.emit();
       },
       error: (respuesta) => {
-        this.errorRevocar.set(respuesta?.error?.message ?? 'No se pudo revocar el acceso.');
+        const msg = respuesta?.error?.message ?? 'No se pudo revocar el acceso.';
+        this.toast.error(msg);
         this.revocando.set(null);
       }
     });

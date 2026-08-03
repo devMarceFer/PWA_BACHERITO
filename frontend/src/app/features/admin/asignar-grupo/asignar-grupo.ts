@@ -8,6 +8,7 @@ import { ButtonComponent } from '../../../shared/components/button/button.compon
 import { InputErrorComponent } from '../../../shared/components/message_error/msg_error.component';
 import { NavbarTopComponent } from '../../../shared/components/toolbar/toolbar.component';
 import { NavigationDrawerComponent } from '../../../shared/components/navigation_drawer/navigation_drawer.component';
+import { ToastService } from '../../../shared/services/toast.service';
 
 @Component({
   selector: 'app-asignar-grupo',
@@ -26,6 +27,7 @@ import { NavigationDrawerComponent } from '../../../shared/components/navigation
 export class AsignarGrupoComponent implements OnInit {
   private asignarGrupoService = inject(AsignarGrupoService);
   private router = inject(Router);
+  private toast = inject(ToastService);
 
   menuAbierto = signal(false);
   grupos = signal<Grupo[]>([]);
@@ -122,13 +124,16 @@ export class AsignarGrupoComponent implements OnInit {
       tecnicos: this.tecnicosSeleccionados().map(t => t.idUsuario)
     }).subscribe({
       next: () => {
+        this.toast.success(`Grupo "${this.nombreGrupo()}" creado exitosamente`);
         this.creando.set(false);
         this.cerrarModal();
         this.cargarGrupos();
       },
       error: (err) => {
+        const msg = err?.error?.message || 'No se pudo crear el grupo. Intenta de nuevo.';
+        this.toast.error(msg);
         this.creando.set(false);
-        this.errorCrear.set(err?.error?.message || 'No se pudo crear el grupo. Intenta de nuevo.');
+        this.errorCrear.set(msg);
       }
     });
   }

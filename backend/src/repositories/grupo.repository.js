@@ -451,6 +451,7 @@ class GrupoRepository {
                 `SELECT p.PAR_CODIGO, p.PAR_NOMBRE
                  FROM GADMAPPS.PAR_PARROQUIAS p
                  WHERE p.PAR_CODIGO NOT IN (SELECT PAR_CODIGO FROM GADMAPPS.OP_BACHERITO_GRUPO_PARROQUIAS)
+                 AND CAN_CODIGO = '184'
                  ORDER BY p.PAR_NOMBRE`
             );
             return result.rows;

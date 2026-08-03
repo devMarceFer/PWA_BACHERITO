@@ -6,6 +6,18 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "start", "--prefix", "frontend"],
       "port": 4200
+    },
+    {
+      "_comentario": "Se conecta al 'ng serve' que ya esta corriendo en el 4200 en vez de levantar un segundo. Sin comando: solo adjunta. Usar bacherito-dev cuando no haya ninguno corriendo.",
+      "name": "bacherito-adjuntar",
+      "url": "http://localhost:4200",
+      "port": 4200
+    },
+    {
+      "name": "bacherito-api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "--prefix", "backend"],
+      "port": 3000
     }
   ]
 }

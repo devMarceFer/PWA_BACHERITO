@@ -5,8 +5,8 @@ Aplicación web progresiva (PWA) con soporte offline para la gestión y reporte 
 
 ## 2. Arquitectura Técnica
 - **Frontend:** Angular (versión estable actual) configurado como PWA con Service Workers e IndexedDB para almacenamiento offline local.
-- **Backend:** Node.js / Express estructurado
-- **Base de Datos:** Oracle Database | IndexDB.
+- **Backend:** Node.js / Express estructurado / Cognito
+- **Base de Datos:** Oracle Database | IndexDB | Cognito
 - **Librerias** Leaflet | OpenStreetMap
 
 ## 3. Requerimientos Funcionales

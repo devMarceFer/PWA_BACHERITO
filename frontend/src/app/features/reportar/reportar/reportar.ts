@@ -9,6 +9,7 @@ import { ParroquiaOffline } from '../../../core/db/offline-db';
 import { NavbarTopComponent } from '../../../shared/components/toolbar/toolbar.component';
 import { ReporteService } from '../../../core/services/reporte.service';
 import { UbicacionService } from '../../../core/services/ubicacion.service';
+import { ToastService } from '../../../shared/services/toast.service';
 import { firstValueFrom } from 'rxjs';
 
 // Importamos Leaflet de forma segura
@@ -42,6 +43,7 @@ export class ReportarComponent implements OnInit, AfterViewInit, OnDestroy {
   private ubicacionService = inject(UbicacionService);
   private http = inject(HttpClient);
   private router = inject(Router);
+  private toast = inject(ToastService);
 
   // Signals de estado
   parroquiaSeleccionada = signal('');
@@ -212,16 +214,22 @@ export class ReportarComponent implements OnInit, AfterViewInit, OnDestroy {
     };
 
     if (!datos.parroquia || !datos.coordenadas) {
-      alert('Por favor, llena los campos requeridos y ubica el bache en el mapa.');
+      this.toast.warning('Por favor, llena los campos requeridos y ubica el bache en el mapa.');
       return;
     }
 
     const resultado = await this.reporteService.enviarReporte(datos);
 
     if (!resultado.success) {
-      alert(resultado.message);
+      this.toast.error(resultado.message);
       return;
     }
+
+    this.toast.success(
+      resultado.offline
+        ? 'Reporte guardado localmente. Se sincronizará cuando tengas conexión.'
+        : 'Reporte enviado con éxito'
+    );
 
     // Mostramos el mismo popup de confirmación tanto si el reporte se envió en vivo al
     // servidor como si quedó guardado localmente a la espera de conexión, para que el

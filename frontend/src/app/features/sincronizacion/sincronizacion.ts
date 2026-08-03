@@ -7,6 +7,7 @@ import { NavigationDrawerComponent } from '../../shared/components/navigation_dr
 import { SincronizacionService } from '../../core/db/services/sincronizacion.service';
 import { ConnectionService } from '../../core/db/services/connection.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../shared/services/toast.service';
 
 @Component({
   selector: 'app-sincronizacion',
@@ -24,6 +25,7 @@ export class SincronizacionComponent implements OnInit {
   private sincronizacionService = inject(SincronizacionService);
   private connectionService = inject(ConnectionService);
   private authService = inject(AuthService);
+  private toast = inject(ToastService);
 
   menuAbierto = signal(false);
   enLinea = this.connectionService.isOnline;
@@ -76,12 +78,22 @@ export class SincronizacionComponent implements OnInit {
     this.mensaje.set(null);
     const resultado = await this.sincronizacionService.descargarRecursos();
     this.mensaje.set({ texto: resultado.mensaje, ok: resultado.ok });
+    if (resultado.ok) {
+      this.toast.success('Recursos descargados correctamente');
+    } else {
+      this.toast.error(resultado.mensaje);
+    }
   }
 
   async subir() {
     this.mensaje.set(null);
     const resultado = await this.sincronizacionService.subirRespuestas();
     this.mensaje.set({ texto: resultado.mensaje, ok: resultado.ok });
+    if (resultado.ok) {
+      this.toast.success('Datos sincronizados correctamente');
+    } else {
+      this.toast.error(resultado.mensaje);
+    }
   }
 
   abrirConfirmacionBorrado() {
@@ -111,5 +123,10 @@ export class SincronizacionComponent implements OnInit {
     this.confirmandoBorrado.set(false);
     this.confirmandoBorradoFinal.set(false);
     this.mensaje.set({ texto: resultado.mensaje, ok: resultado.ok });
+    if (resultado.ok) {
+      this.toast.success('Caché borrado correctamente');
+    } else {
+      this.toast.error(resultado.mensaje);
+    }
   }
 }
