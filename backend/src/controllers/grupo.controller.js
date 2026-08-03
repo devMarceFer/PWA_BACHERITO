@@ -133,6 +133,69 @@ class GrupoController {
             next(error);
         }
     }
+
+    async parroquiasDeGrupo(req, res, next) {
+        try {
+            const data = await grupoService.obtenerParroquiasDeGrupo(req.params.id);
+            return res.status(200).json({ success: true, data });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async parroquiasDisponibles(req, res, next) {
+        try {
+            const data = await grupoService.obtenerParroquiasDisponibles();
+            return res.status(200).json({ success: true, data });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async asignarParroquias(req, res, next) {
+        try {
+            await grupoService.asignarParroquias(req.params.id, req.body.parroquias, req.usuario.sub);
+            return res.status(201).json({ success: true, message: 'Parroquias asignadas al grupo.' });
+        } catch (error) {
+            if (error.message.startsWith('VALIDACION_FALLIDA')) {
+                return res.status(400).json({ success: false, message: error.message.replace('VALIDACION_FALLIDA: ', '') });
+            }
+            if (error.message === 'PARROQUIA_YA_ASIGNADA') {
+                return res.status(409).json({ success: false, message: 'Alguna de esas parroquias ya está a cargo de otro grupo.' });
+            }
+            next(error);
+        }
+    }
+
+    async quitarParroquia(req, res, next) {
+        try {
+            await grupoService.quitarParroquia(req.params.id, req.params.codigo);
+            return res.status(200).json({ success: true, message: 'Parroquia removida del grupo.' });
+        } catch (error) {
+            if (error.message === 'PARROQUIA_NO_ENCONTRADA') {
+                return res.status(404).json({ success: false, message: 'Esa parroquia no está asignada a este grupo.' });
+            }
+            next(error);
+        }
+    }
+
+    async previsualizarBachesPorParroquia(req, res, next) {
+        try {
+            const data = await grupoService.previsualizarBachesPorParroquia(req.params.id);
+            return res.status(200).json({ success: true, data });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async asignarBachesPorParroquia(req, res, next) {
+        try {
+            const data = await grupoService.asignarBachesPorParroquia(req.params.id, req.usuario.sub);
+            return res.status(201).json({ success: true, message: `Se asignaron ${data.asignados} baches al grupo.`, data });
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 export default new GrupoController();
