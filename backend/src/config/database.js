@@ -14,7 +14,9 @@ export async function initializePool() {
             poolMin: 2,
             poolMax: 10,
             poolIncrement: 1,
-            poolTimeout: 60
+            poolTimeout: 60,
+            connectionTimeout: 5,           // Timeout inicial en segundos
+            idleConnectionTimeout: 300      // Cerrar conexiones ociosas después de 5min
         });
         console.log('✅ Pool de conexiones de Oracle inicializado con éxito.');
     } catch (err) {

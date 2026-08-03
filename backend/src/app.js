@@ -9,6 +9,7 @@ import funcionarioRoutes from './routes/funcionario.routes.js';
 import grupoRoutes from './routes/grupo.routes.js';
 import mistareaRoutes from './routes/mistarea.routes.js';
 import accesosRoutes from './routes/accesos.routes.js';
+import healthRoutes from './routes/health.routes.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 import 'dotenv/config';
 
@@ -18,15 +19,23 @@ const PORT = process.env.PORT || 3000;
 // Cabeceras de seguridad HTTP (CSP, HSTS, X-Frame-Options, etc.)
 app.use(helmet());
 
-// 🆕 2. Habilitamos CORS de manera global antes de las rutas
-// Esto le dice a Oracle/Node que acepte peticiones de cualquier origen (incluido localhost:4200)
-app.use(cors());
+// CORS configurado con whitelist de orígenes permitidos
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:4200').split(',');
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    maxAge: 3600,
+    optionsSuccessStatus: 200
+}));
 
 // Las fotografías de los reportes viajan como base64 dentro del JSON; el límite por defecto
 // de Express (100kb) no alcanza para una sola foto de cámara.
 app.use(express.json({ limit: '10mb' }));
 
 // Registro de endpoints
+app.use(healthRoutes);  // Health check disponible en /health (sin prefijo /api)
 app.use('/api', parroquiaRoutes);
 app.use('/api', requerimientoRoutes);
 app.use('/api', authRoutes);
