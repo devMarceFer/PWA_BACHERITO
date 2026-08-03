@@ -63,6 +63,22 @@ export interface GrupoDetalle extends Grupo {
   tareas: TareaGrupo[];
 }
 
+export interface ParroquiaGrupo {
+  parCodigo: number;
+  parNombre: string;
+}
+
+export interface ConteoParroquia {
+  parCodigo: number;
+  parNombre: string;
+  cantidad: number;
+}
+
+export interface PrevisualizacionBaches {
+  total: number;
+  detalle: ConteoParroquia[];
+}
+
 interface RespuestaListado {
   success: boolean;
   data: Grupo[];
@@ -94,6 +110,22 @@ interface RespuestaBachesDisponibles {
 interface RespuestaMapaAdmin {
   success: boolean;
   data: BacheMapa[];
+}
+
+interface RespuestaParroquias {
+  success: boolean;
+  data: ParroquiaGrupo[];
+}
+
+interface RespuestaPrevisualizacion {
+  success: boolean;
+  data: PrevisualizacionBaches;
+}
+
+interface RespuestaAsignacionMasiva {
+  success: boolean;
+  message: string;
+  data: { asignados: number };
 }
 
 @Injectable({
@@ -153,5 +185,31 @@ export class AsignarGrupoService {
 
   quitarTecnico(idGrupo: number, idUsuario: number): Observable<{ success: boolean; message: string }> {
     return this.http.delete<{ success: boolean; message: string }>(`${this.API_URL}/${idGrupo}/tecnicos/${idUsuario}`);
+  }
+
+  listarParroquiasDeGrupo(idGrupo: number): Observable<RespuestaParroquias> {
+    return this.http.get<RespuestaParroquias>(`${this.API_URL}/${idGrupo}/parroquias`);
+  }
+
+  // Solo las que no tiene ningún grupo: así el administrador no puede elegir una ya tomada.
+  listarParroquiasDisponibles(): Observable<RespuestaParroquias> {
+    return this.http.get<RespuestaParroquias>(`${this.API_URL}/parroquias-disponibles`);
+  }
+
+  asignarParroquias(idGrupo: number, parroquias: number[]): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(`${this.API_URL}/${idGrupo}/parroquias`, { parroquias });
+  }
+
+  quitarParroquia(idGrupo: number, parCodigo: number): Observable<{ success: boolean; message: string }> {
+    return this.http.delete<{ success: boolean; message: string }>(`${this.API_URL}/${idGrupo}/parroquias/${parCodigo}`);
+  }
+
+  // Desglose de lo que traería la asignación masiva, sin ejecutarla.
+  previsualizarBachesPorParroquia(idGrupo: number): Observable<RespuestaPrevisualizacion> {
+    return this.http.get<RespuestaPrevisualizacion>(`${this.API_URL}/${idGrupo}/baches-por-parroquia`);
+  }
+
+  asignarBachesPorParroquia(idGrupo: number): Observable<RespuestaAsignacionMasiva> {
+    return this.http.post<RespuestaAsignacionMasiva>(`${this.API_URL}/${idGrupo}/tareas/por-parroquia`, {});
   }
 }
