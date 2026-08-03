@@ -1,8 +1,9 @@
 import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../../../core/services/auth.service';
+import { ToastService } from '../../../shared/services/toast.service';
 
 @Component({
   selector: 'app-navigation-drawer',
@@ -17,12 +18,23 @@ import { AuthService } from '../../../core/services/auth.service';
 })
 export class NavigationDrawerComponent {
   private authService = inject(AuthService);
+  private router = inject(Router);
+  private toast = inject(ToastService);
 
   @Input() abierto: boolean = false;
   @Output() cerrado = new EventEmitter<void>();
 
   get nombreUsuario(): string {
     return this.authService.usuarioActual() ?? 'Funcionario';
+  }
+
+  get rolUsuario(): string {
+    const tieneAdmin = this.tieneAccesoAsignarGrupo || this.tieneAccesoGestionarAccesos;
+    const tieneMisTareas = this.tieneAccesoMisTareas;
+
+    if (tieneAdmin) return 'Administrador';
+    if (tieneMisTareas) return 'Técnico';
+    return 'Usuario';
   }
 
   get tieneAccesoAsignarGrupo(): boolean {
@@ -43,5 +55,12 @@ export class NavigationDrawerComponent {
 
   cerrar() {
     this.cerrado.emit();
+  }
+
+  logout() {
+    this.cerrar();
+    this.authService.logout();
+    this.toast.success('Sesión cerrada correctamente');
+    this.router.navigate(['/login']);
   }
 }

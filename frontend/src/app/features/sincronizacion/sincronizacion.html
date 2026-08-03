@@ -1,4 +1,4 @@
-<div class="min-h-screen w-full flex flex-col bg-bg select-none">
+<div class="min-h-screen w-full flex flex-col bg-bg">
 
   <app-toolbar [titulo]="'Sincronización'" [mostrarBotonMenu]="true" (menuClick)="menuAbierto.set(true)"></app-toolbar>
   <app-navigation-drawer [abierto]="menuAbierto()" (cerrado)="menuAbierto.set(false)"></app-navigation-drawer>
@@ -8,8 +8,7 @@
 
   <!-- Encabezado -->
   <div class="mb-5">
-    <h2 class="text-xl font-extrabold text-text">Sincronización</h2>
-    <p class="mt-0.5 text-sm text-text-muted">
+    <p class="text-sm text-text-muted">
       Administra la descarga de tus tareas y el envío de respuestas y nuevos reportes.
     </p>
   </div>
@@ -83,9 +82,11 @@
 
       <button
         type="button"
+        id="btn-descargar"
         (click)="descargar()"
         [disabled]="!puedeDescargar()"
-        class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-all active:scale-[0.98] disabled:opacity-50">
+        aria-label="Descargar recursos del sistema"
+        class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50">
         <mat-icon class="!text-lg !h-5 !w-5" [class.animate-spin]="ocupado()">
           {{ ocupado() ? 'sync' : 'download' }}
         </mat-icon>
@@ -101,7 +102,7 @@
         <mat-icon class="!text-2xl" aria-hidden="true">upload_file</mat-icon>
       </div>
       <div class="min-w-0 flex-1">
-        <h3 class="text-base font-bold text-text">Subir respuesta</h3>
+        <h3 class="text-base font-bold text-text">Subir respuestas</h3>
         <p class="mt-0.5 text-xs text-text-muted">
           Último envío:
           {{ ultimoEnvio() ? (ultimoEnvio() | date:'dd/MM/yyyy HH:mm') : 'Nunca' }}
@@ -120,7 +121,10 @@
       [class.bg-danger-bg]="totalPendientes() > 0"
       [class.text-danger]="totalPendientes() > 0">
       @if (totalPendientes() === 0) {
-        Sin respuestas pendientes
+        <div class="flex items-center gap-2">
+          <mat-icon class="!text-base">check_circle</mat-icon>
+          <span>Todo sincronizado</span>
+        </div>
       } @else {
         {{ totalPendientes() }} {{ totalPendientes() === 1 ? 'elemento pendiente' : 'elementos pendientes' }} de envío
       }
@@ -132,9 +136,11 @@
 
     <button
       type="button"
+      id="btn-subir-respuestas"
       (click)="subir()"
       [disabled]="!puedeSubir()"
-      class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-all active:scale-[0.98] disabled:opacity-50">
+      aria-label="Subir respuestas al servidor"
+      class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50">
       <mat-icon class="!text-lg !h-5 !w-5" [class.animate-spin]="ocupado()">
         {{ ocupado() ? 'sync' : 'upload' }}
       </mat-icon>
@@ -160,9 +166,11 @@
 
     <button
       type="button"
+      id="btn-borrar-cache"
       (click)="abrirConfirmacionBorrado()"
       [disabled]="ocupado()"
-      class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-danger px-4 py-3 text-sm font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-50">
+      aria-label="Eliminar caché del dispositivo (todos los recursos y respuestas)"
+      class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-danger px-4 py-3 text-sm font-semibold text-white transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50">
       <mat-icon class="!text-lg !h-5 !w-5">delete</mat-icon>
       Borrar caché
     </button>
