@@ -138,14 +138,25 @@ class AccesosRepository {
                     continue;
                 }
 
-                await connection.execute(
-                    `INSERT INTO GADMAPPS.RBAC_USUARIO_MODULO_ROL
-                        (ID_USUARIO, ID_MODULO, ID_ROL, ASIGNADO_POR)
-                     VALUES (:idUsuario, :idModulo, :idRol, :asignadoPor)`,
-                    { ...binds, asignadoPor },
-                    { autoCommit: false }
-                );
-                otorgados++;
+                // Entre el SELECT de arriba y este INSERT no hay bloqueo: dos peticiones casi
+                // simultáneas para el mismo par nuevo (p.ej. dos pestañas del navegador) pueden
+                // pasar ambas el SELECT sin encontrar nada y llegar las dos aquí. La que confirma
+                // segunda choca contra UK_USUARIO_MODULO_ROL con ORA-00001. Oracle hace rollback
+                // a nivel de sentencia ante una violación de restricción (no de transacción), así
+                // que la conexión sigue usable: se ignora esta fila —ya quedó otorgada por la otra
+                // transacción— y se sigue con el resto de los pares, sin abortar ni reintentar.
+                try {
+                    await connection.execute(
+                        `INSERT INTO GADMAPPS.RBAC_USUARIO_MODULO_ROL
+                            (ID_USUARIO, ID_MODULO, ID_ROL, ASIGNADO_POR)
+                         VALUES (:idUsuario, :idModulo, :idRol, :asignadoPor)`,
+                        { ...binds, asignadoPor },
+                        { autoCommit: false }
+                    );
+                    otorgados++;
+                } catch (errorInsert) {
+                    if (errorInsert.errorNum !== 1) throw errorInsert;
+                }
             }
 
             await connection.commit();
