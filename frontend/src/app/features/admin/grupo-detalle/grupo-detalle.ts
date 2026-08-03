@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { firstValueFrom } from 'rxjs';
-import { AsignarGrupoService, BacheDisponible, GrupoDetalle, TecnicoGrupo, ParroquiaGrupo } from '../asignar-grupo/asignar-grupo.service';
+import { AsignarGrupoService, BacheDisponible, GrupoDetalle, TecnicoGrupo, ParroquiaGrupo, PrevisualizacionBaches } from '../asignar-grupo/asignar-grupo.service';
 import { ParroquiaService } from '../../../core/services/parroquia.service';
 import { ParroquiaOffline } from '../../../core/db/offline-db';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
@@ -63,6 +63,11 @@ export class GrupoDetalleComponent implements OnInit {
   parroquiasSeleccionadas = signal<number[]>([]);
   guardandoParroquias = signal(false);
   quitandoParroquia = signal<number | null>(null);
+
+  previsualizacion = signal<PrevisualizacionBaches | null>(null);
+  cargandoPrevisualizacion = signal(false);
+  asignandoMasivo = signal(false);
+  mensajeMasivo = signal<string | null>(null);
 
   async ngOnInit() {
     this.idGrupo = Number(this.route.snapshot.paramMap.get('id'));
@@ -285,5 +290,42 @@ export class GrupoDetalleComponent implements OnInit {
       this.error.set(error?.error?.message ?? 'No se pudo quitar la parroquia.');
     }
     this.quitandoParroquia.set(null);
+  }
+
+  // Asignar cambia el estado real de cada bache a 'Reasignado', así que el administrador
+  // ve primero el desglose y recién después confirma.
+  async abrirPrevisualizacion() {
+    this.mensajeMasivo.set(null);
+    this.error.set(null);
+    this.cargandoPrevisualizacion.set(true);
+    try {
+      const respuesta = await firstValueFrom(this.asignarGrupoService.previsualizarBachesPorParroquia(this.idGrupo));
+      this.previsualizacion.set(respuesta.data);
+    } catch (error: any) {
+      this.error.set(error?.error?.message ?? 'No se pudo consultar los baches de tus parroquias.');
+    }
+    this.cargandoPrevisualizacion.set(false);
+  }
+
+  cerrarPrevisualizacion() {
+    this.previsualizacion.set(null);
+  }
+
+  async confirmarAsignacionMasiva() {
+    this.asignandoMasivo.set(true);
+    this.error.set(null);
+    try {
+      const respuesta = await firstValueFrom(this.asignarGrupoService.asignarBachesPorParroquia(this.idGrupo));
+      // El conteo del servidor es el real al momento de asignar: puede diferir del previsualizado.
+      this.mensajeMasivo.set(`Se asignaron ${respuesta.data.asignados} baches al grupo.`);
+      this.previsualizacion.set(null);
+      // cargarGrupo() ya existe en el componente (grupo-detalle.ts:68) y NO es async:
+      // usa .subscribe() internamente. Llamarlo sin await — ponerle await esperaría
+      // undefined y daría una falsa sensación de que la recarga terminó.
+      this.cargarGrupo();
+    } catch (error: any) {
+      this.error.set(error?.error?.message ?? 'No se pudieron asignar los baches.');
+    }
+    this.asignandoMasivo.set(false);
   }
 }

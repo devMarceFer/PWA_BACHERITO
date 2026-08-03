@@ -81,6 +81,85 @@
           }
         </div>
 
+        <!-- Traer baches de las parroquias del grupo -->
+        <div class="mt-4">
+          @if (mensajeMasivo(); as mensaje) {
+            <div class="mb-3 flex items-center gap-2 rounded-2xl bg-success-bg px-4 py-3">
+              <mat-icon class="!text-xl text-success">check_circle</mat-icon>
+              <span class="text-sm font-medium text-success">{{ mensaje }}</span>
+            </div>
+          }
+
+          <button
+            type="button"
+            (click)="abrirPrevisualizacion()"
+            [disabled]="parroquiasDelGrupo().length === 0 || cargandoPrevisualizacion()"
+            class="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary transition-all active:scale-[0.98] disabled:opacity-50">
+            <mat-icon class="!text-lg !h-5 !w-5">playlist_add</mat-icon>
+            {{ cargandoPrevisualizacion() ? 'Consultando...' : 'Traer baches de mis parroquias' }}
+          </button>
+
+          @if (parroquiasDelGrupo().length === 0) {
+            <p class="mt-2 text-xs font-medium text-text-muted">
+              Primero asigna al menos una parroquia a este grupo.
+            </p>
+          }
+        </div>
+
+        <!-- Previsualización de la asignación masiva -->
+        @if (previsualizacion(); as previa) {
+          <div class="fixed inset-0 z-[500] flex items-center justify-center px-6">
+            <div class="absolute inset-0 bg-black/50" (click)="cerrarPrevisualizacion()" aria-hidden="true"></div>
+
+            <div class="relative z-10 w-full max-w-sm rounded-3xl bg-surface p-6 shadow-2xl" role="alertdialog" aria-modal="true">
+              <h3 class="text-lg font-bold text-text">Traer baches de tus parroquias</h3>
+
+              @if (previa.total === 0) {
+                <p class="mt-3 text-sm text-text-muted">No hay baches pendientes en tus parroquias.</p>
+                <button
+                  type="button"
+                  (click)="cerrarPrevisualizacion()"
+                  class="mt-6 w-full rounded-xl bg-surface-alt px-4 py-3 text-sm font-semibold text-text">
+                  Entendido
+                </button>
+              } @else {
+                <div class="mt-4 flex flex-col gap-1.5">
+                  @for (fila of previa.detalle; track fila.parCodigo) {
+                    <div class="flex items-center justify-between text-sm">
+                      <span class="text-text-muted">{{ fila.parNombre }}</span>
+                      <span class="font-semibold text-text">{{ fila.cantidad }}</span>
+                    </div>
+                  }
+                  <div class="mt-2 flex items-center justify-between border-t border-black/10 pt-2 text-sm">
+                    <span class="font-bold text-text">Total</span>
+                    <span class="font-extrabold text-text">{{ previa.total }}</span>
+                  </div>
+                </div>
+
+                <p class="mt-4 text-xs text-text-muted">
+                  Se asignarán a este grupo y pasarán a estado "Reasignado".
+                </p>
+
+                <div class="mt-6 flex gap-3">
+                  <button
+                    type="button"
+                    (click)="cerrarPrevisualizacion()"
+                    class="flex-1 rounded-xl bg-surface-alt px-4 py-3 text-sm font-semibold text-text">
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    (click)="confirmarAsignacionMasiva()"
+                    [disabled]="asignandoMasivo()"
+                    class="flex-1 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-primary disabled:opacity-50">
+                    {{ asignandoMasivo() ? 'Asignando...' : 'Asignar ' + previa.total }}
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
         <!-- Tareas -->
         <div class="flex items-center justify-between gap-3">
           <h3 class="text-base font-bold text-text">Tareas (baches asignados)</h3>
