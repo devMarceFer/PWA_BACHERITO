@@ -29,6 +29,10 @@ export class NavigationDrawerComponent {
     return this.authService.tieneAcceso('ASIGNAR_GRUPO');
   }
 
+  get tieneAccesoGestionarAccesos(): boolean {
+    return this.authService.tieneAcceso('GESTIONAR_ACCESOS');
+  }
+
   get tieneAccesoBacherito(): boolean {
     return this.authService.tieneAcceso('REPORTAR_BACHE') || this.authService.tieneAcceso('SEGUIMIENTO_BACHE');
   }

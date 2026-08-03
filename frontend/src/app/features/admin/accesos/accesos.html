@@ -1,0 +1,109 @@
+<div class="flex min-h-dvh flex-col bg-surface-alt">
+
+  <app-toolbar
+    titulo="Gestión de accesos"
+    [mostrarBotonAtras]="true"
+    [mostrarBotonMenu]="true"
+    (menuClick)="menuAbierto.set(true)">
+  </app-toolbar>
+
+  <app-navigation-drawer
+    [abierto]="menuAbierto()"
+    (cerrado)="menuAbierto.set(false)">
+  </app-navigation-drawer>
+
+  <main class="flex-1 px-4 py-5">
+
+    <!-- Los módulos van embebidos en el JWT firmado en el login y TOKEN_EXPIRACION_MIN es
+         5760 (4 días). Sin este aviso, el administrador otorga un acceso, el usuario dice
+         "no me aparece", y nadie entiende por qué. -->
+    <div class="mb-5 flex items-start gap-3 rounded-xl bg-amber-50 p-4 text-amber-900">
+      <mat-icon class="!text-xl !h-5 !w-5 shrink-0">info</mat-icon>
+      <p class="text-sm">
+        Los cambios de acceso se aplican cuando la persona cierre sesión y vuelva a entrar.
+      </p>
+    </div>
+
+    @if (usuarioSeleccionado(); as usuario) {
+
+      <button
+        (click)="volverAlListado()"
+        class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
+        <mat-icon class="!text-lg !h-4 !w-4">arrow_back</mat-icon>
+        Buscar otra persona
+      </button>
+
+      <!-- La tarea 7 crea <app-accesos-usuario> y reemplaza este bloque. -->
+      <div class="rounded-2xl bg-surface p-5 shadow-sm">
+        <p class="text-sm font-bold text-text">{{ usuario.nombre }} {{ usuario.apellido }}</p>
+        <p class="text-xs text-text-muted">{{ usuario.numDocumento }} · {{ usuario.email }}</p>
+      </div>
+
+    } @else {
+
+      <div class="rounded-2xl bg-surface p-5 shadow-sm">
+        <label for="busqueda" class="mb-2 block text-sm font-semibold text-text">
+          Buscar persona
+        </label>
+        <div class="flex items-start gap-2">
+          <input
+            id="busqueda"
+            type="text"
+            [(ngModel)]="busqueda"
+            (keyup.enter)="buscar()"
+            placeholder="Cédula, nombre o correo"
+            class="min-w-0 flex-1 rounded-xl border border-outline px-3 py-2.5 text-sm outline-none focus:border-primary" />
+          <!-- app-button renderiza w-full, por eso va envuelto con un ancho fijo. -->
+          <div class="w-28 shrink-0">
+            <app-button
+              type="button"
+              variant="primary"
+              [cargando]="buscando()"
+              (btnClick)="buscar()">
+              Buscar
+            </app-button>
+          </div>
+        </div>
+
+        @if (errorBusqueda()) {
+          <p class="mt-2 text-sm text-error">{{ errorBusqueda() }}</p>
+        }
+      </div>
+
+      @if (resultados().length > 0) {
+        <ul class="mt-4 flex flex-col gap-2">
+          @for (usuario of resultados(); track usuario.idUsuario) {
+            <li>
+              <button
+                (click)="seleccionar(usuario)"
+                class="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-left shadow-sm transition-all active:scale-[0.99]">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+                  <mat-icon class="!text-xl !h-5 !w-5">person</mat-icon>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-bold text-text">{{ usuario.nombre }} {{ usuario.apellido }}</p>
+                  <p class="truncate text-xs text-text-muted">{{ usuario.numDocumento }} · {{ usuario.email }}</p>
+                </div>
+                @if (usuario.totalAccesosActivos === 0) {
+                  <span class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900">
+                    Sin accesos
+                  </span>
+                } @else {
+                  <span class="shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-medium text-primary">
+                    {{ usuario.totalAccesosActivos }}
+                  </span>
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      } @else if (yaBusco() && !buscando()) {
+        <p class="mt-4 rounded-2xl bg-surface p-5 text-center text-sm text-text-muted shadow-sm">
+          No se encontró ninguna persona con ese dato.
+        </p>
+      }
+
+    }
+
+  </main>
+</div>

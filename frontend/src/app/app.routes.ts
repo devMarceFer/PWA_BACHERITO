@@ -72,6 +72,12 @@ export const routes: Routes = [
   },
 
   {
+    path: 'admin/accesos',
+    canActivate: [authGuard, moduloGuard('GESTIONAR_ACCESOS')], // 🛡️ Protegido
+    loadComponent: () => import('./features/admin/accesos/accesos').then(m => m.AccesosComponent)
+  },
+
+  {
     path: 'mis-tareas',
     canActivate: [authGuard, moduloGuard('MIS_TAREAS')], // 🛡️ Protegido
     loadComponent: () => import('./features/mis-tareas/mis-tareas').then(m => m.MisTareasComponent)
