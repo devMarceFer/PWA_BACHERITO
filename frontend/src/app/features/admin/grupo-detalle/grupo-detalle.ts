@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { AsignarGrupoService, BacheDisponible, GrupoDetalle, TecnicoGrupo } from '../asignar-grupo/asignar-grupo.service';
+import { firstValueFrom } from 'rxjs';
+import { AsignarGrupoService, BacheDisponible, GrupoDetalle, TecnicoGrupo, ParroquiaGrupo } from '../asignar-grupo/asignar-grupo.service';
 import { ParroquiaService } from '../../../core/services/parroquia.service';
 import { ParroquiaOffline } from '../../../core/db/offline-db';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
@@ -56,13 +57,21 @@ export class GrupoDetalleComponent implements OnInit {
   quitandoTecnico = signal<number | null>(null);
   errorTecnico = signal<string | null>(null);
 
-  ngOnInit() {
+  parroquiasDelGrupo = signal<ParroquiaGrupo[]>([]);
+  parroquiasDisponibles = signal<ParroquiaGrupo[]>([]);
+  mostrarPickerParroquias = signal(false);
+  parroquiasSeleccionadas = signal<number[]>([]);
+  guardandoParroquias = signal(false);
+  quitandoParroquia = signal<number | null>(null);
+
+  async ngOnInit() {
     this.idGrupo = Number(this.route.snapshot.paramMap.get('id'));
     if (!this.idGrupo) {
       this.router.navigate(['/admin/grupos']);
       return;
     }
     this.cargarGrupo();
+    await this.cargarParroquiasDelGrupo();
   }
 
   private cargarGrupo() {
@@ -223,5 +232,58 @@ export class GrupoDetalleComponent implements OnInit {
         this.errorTecnico.set(err?.error?.message || 'No se pudo quitar el técnico. Intenta de nuevo.');
       }
     });
+  }
+
+  private async cargarParroquiasDelGrupo() {
+    const respuesta = await firstValueFrom(this.asignarGrupoService.listarParroquiasDeGrupo(this.idGrupo));
+    this.parroquiasDelGrupo.set(respuesta.data);
+  }
+
+  async abrirPickerParroquias() {
+    this.error.set(null);
+    this.parroquiasSeleccionadas.set([]);
+    const respuesta = await firstValueFrom(this.asignarGrupoService.listarParroquiasDisponibles());
+    this.parroquiasDisponibles.set(respuesta.data);
+    this.mostrarPickerParroquias.set(true);
+  }
+
+  cerrarPickerParroquias() {
+    this.mostrarPickerParroquias.set(false);
+  }
+
+  alternarParroquia(parCodigo: number) {
+    const actuales = this.parroquiasSeleccionadas();
+    this.parroquiasSeleccionadas.set(
+      actuales.includes(parCodigo) ? actuales.filter(c => c !== parCodigo) : [...actuales, parCodigo]
+    );
+  }
+
+  async guardarParroquias() {
+    if (this.parroquiasSeleccionadas().length === 0) return;
+
+    this.guardandoParroquias.set(true);
+    this.error.set(null);
+    try {
+      await firstValueFrom(this.asignarGrupoService.asignarParroquias(this.idGrupo, this.parroquiasSeleccionadas()));
+      await this.cargarParroquiasDelGrupo();
+      this.mostrarPickerParroquias.set(false);
+    } catch (error: any) {
+      this.error.set(error?.error?.message ?? 'No se pudieron asignar las parroquias.');
+    }
+    this.guardandoParroquias.set(false);
+  }
+
+  // Quitar la parroquia solo cambia el territorio del grupo: los baches que ya se le
+  // asignaron se quedan con él, porque puede haber un técnico con el trabajo en curso.
+  async quitarParroquia(parCodigo: number) {
+    this.quitandoParroquia.set(parCodigo);
+    this.error.set(null);
+    try {
+      await firstValueFrom(this.asignarGrupoService.quitarParroquia(this.idGrupo, parCodigo));
+      await this.cargarParroquiasDelGrupo();
+    } catch (error: any) {
+      this.error.set(error?.error?.message ?? 'No se pudo quitar la parroquia.');
+    }
+    this.quitandoParroquia.set(null);
   }
 }
