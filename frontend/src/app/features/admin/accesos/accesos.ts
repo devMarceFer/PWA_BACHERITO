@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { AccesosService, UsuarioBusqueda } from './accesos.service';
+import { AccesosUsuarioComponent } from './accesos-usuario';
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { NavbarTopComponent } from '../../../shared/components/toolbar/toolbar.component';
 import { NavigationDrawerComponent } from '../../../shared/components/navigation_drawer/navigation_drawer.component';
@@ -16,7 +17,8 @@ import { NavigationDrawerComponent } from '../../../shared/components/navigation
     MatIconModule,
     ButtonComponent,
     NavbarTopComponent,
-    NavigationDrawerComponent
+    NavigationDrawerComponent,
+    AccesosUsuarioComponent
   ],
   templateUrl: './accesos.html'
 })

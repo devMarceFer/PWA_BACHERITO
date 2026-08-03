@@ -1,0 +1,150 @@
+@if (cargando()) {
+  <p class="rounded-2xl bg-surface p-5 text-center text-sm text-text-muted shadow-sm">
+    Cargando accesos…
+  </p>
+}
+
+@if (errorCarga()) {
+  <p class="rounded-2xl bg-surface p-5 text-center text-sm text-error shadow-sm">
+    {{ errorCarga() }}
+  </p>
+}
+
+@if (detalle(); as d) {
+
+  <!-- Ficha -->
+  <div class="rounded-2xl bg-surface p-5 shadow-sm">
+    <p class="text-sm font-bold text-text">{{ d.usuario.nombre }} {{ d.usuario.apellido }}</p>
+    <p class="mt-0.5 text-xs text-text-muted">{{ d.usuario.numDocumento }} · {{ d.usuario.email }}</p>
+
+    @if (sinAccesos()) {
+      <div class="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-amber-900">
+        <mat-icon class="!text-lg !h-4 !w-4 shrink-0">warning</mat-icon>
+        <p class="text-xs">
+          Esta persona no puede iniciar sesión: no tiene ningún módulo asignado.
+        </p>
+      </div>
+    }
+  </div>
+
+  @if (mensajeExito()) {
+    <p class="mt-3 rounded-xl bg-green-50 p-3 text-sm text-green-800">{{ mensajeExito() }}</p>
+  }
+
+  <!-- Accesos activos -->
+  <section class="mt-4 rounded-2xl bg-surface p-5 shadow-sm">
+    <h2 class="mb-3 text-sm font-bold text-text">Accesos activos</h2>
+
+    @if (accesosActivos().length === 0) {
+      <p class="text-sm text-text-muted">Todavía no tiene ninguno.</p>
+    } @else {
+      <ul class="flex flex-col gap-2">
+        @for (acceso of accesosActivos(); track acceso.idUmr) {
+          <li class="flex items-center gap-3 rounded-xl bg-surface-alt p-3">
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-text">{{ acceso.modulo }}</p>
+              <p class="truncate text-xs text-text-muted">{{ acceso.sistema }} · rol {{ acceso.rol }}</p>
+            </div>
+            <button
+              (click)="revocar(acceso)"
+              [disabled]="!puedeRevocar(acceso) || revocando() === acceso.idUmr"
+              class="shrink-0 rounded-lg p-2 text-error transition-all disabled:opacity-40"
+              [attr.aria-label]="'Revocar ' + acceso.modulo">
+              <mat-icon class="!text-xl !h-5 !w-5">remove_circle_outline</mat-icon>
+            </button>
+          </li>
+
+          @if (!puedeRevocar(acceso)) {
+            <p class="-mt-1 px-3 text-[11px] text-text-muted">
+              No puedes quitarte a ti mismo este acceso: quedarías sin forma de recuperarlo.
+            </p>
+          }
+        }
+      </ul>
+    }
+
+    @if (errorRevocar()) {
+      <p class="mt-3 text-sm text-error">{{ errorRevocar() }}</p>
+    }
+  </section>
+
+  <!-- Otorgar -->
+  <section class="mt-4 rounded-2xl bg-surface p-5 shadow-sm">
+    <h2 class="mb-3 text-sm font-bold text-text">Otorgar acceso</h2>
+
+    @if (catalogo(); as cat) {
+      @for (sistema of cat.sistemas; track sistema.idSistema) {
+        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+          {{ sistema.nombre }}
+        </p>
+
+        <ul class="mb-4 flex flex-col gap-2">
+          @for (modulo of sistema.modulos; track modulo.idModulo) {
+            <li class="flex items-center gap-3 rounded-xl bg-surface-alt p-3">
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium text-text">{{ modulo.nombre }}</p>
+                @if (modulo.descripcion) {
+                  <p class="truncate text-xs text-text-muted">{{ modulo.descripcion }}</p>
+                }
+              </div>
+
+              <select
+                [value]="rolElegido(modulo.idModulo) ?? ''"
+                (change)="elegirRol(modulo.idModulo, $any($event.target).value)"
+                class="shrink-0 rounded-lg border border-outline bg-surface px-2 py-1.5 text-xs outline-none focus:border-primary"
+                [attr.aria-label]="'Rol para ' + modulo.nombre">
+                <option value="">Sin rol</option>
+                @for (rol of cat.roles; track rol.idRol) {
+                  <option
+                    [value]="rol.idRol"
+                    [disabled]="yaTiene(modulo.idModulo, rol.idRol)">
+                    {{ rol.nombre }}{{ yaTiene(modulo.idModulo, rol.idRol) ? ' (ya asignado)' : '' }}
+                  </option>
+                }
+              </select>
+            </li>
+          }
+        </ul>
+      }
+
+      <app-button
+        type="button"
+        variant="primary"
+        [cargando]="guardando()"
+        [disabled]="otorgamientosPendientes().length === 0"
+        (btnClick)="otorgar()">
+        Otorgar seleccionados
+      </app-button>
+
+      @if (errorOtorgar()) {
+        <p class="mt-3 text-sm text-error">{{ errorOtorgar() }}</p>
+      }
+    }
+  </section>
+
+  <!-- Revocados, colapsados -->
+  @if (accesosRevocados().length > 0) {
+    <section class="mt-4 rounded-2xl bg-surface p-5 shadow-sm">
+      <button
+        (click)="mostrarRevocados.set(!mostrarRevocados())"
+        class="flex w-full items-center justify-between text-sm font-bold text-text">
+        Accesos revocados ({{ accesosRevocados().length }})
+        <mat-icon class="!text-xl !h-5 !w-5">
+          {{ mostrarRevocados() ? 'expand_less' : 'expand_more' }}
+        </mat-icon>
+      </button>
+
+      @if (mostrarRevocados()) {
+        <ul class="mt-3 flex flex-col gap-2">
+          @for (acceso of accesosRevocados(); track acceso.idUmr) {
+            <li class="rounded-xl bg-surface-alt p-3 opacity-70">
+              <p class="text-sm font-medium text-text">{{ acceso.modulo }}</p>
+              <p class="text-xs text-text-muted">{{ acceso.sistema }} · rol {{ acceso.rol }}</p>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+
+}

@@ -33,11 +33,10 @@
         Buscar otra persona
       </button>
 
-      <!-- La tarea 7 crea <app-accesos-usuario> y reemplaza este bloque. -->
-      <div class="rounded-2xl bg-surface p-5 shadow-sm">
-        <p class="text-sm font-bold text-text">{{ usuario.nombre }} {{ usuario.apellido }}</p>
-        <p class="text-xs text-text-muted">{{ usuario.numDocumento }} · {{ usuario.email }}</p>
-      </div>
+      <app-accesos-usuario
+        [idUsuario]="usuario.idUsuario"
+        (cambio)="refrescarListado()">
+      </app-accesos-usuario>
 
     } @else {
 
