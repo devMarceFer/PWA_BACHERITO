@@ -486,6 +486,88 @@ class GrupoRepository {
             if (connection) await connection.close();
         }
     }
+
+    // Conteo por parroquia de los baches que la asignación masiva traería. Usa EXACTAMENTE
+    // el mismo criterio que findIdsBachesDeParroquiasDeGrupo: si divergen, el administrador
+    // confirma un número y se asigna otro.
+    async contarBachesDeParroquiasDeGrupo(idGrupo, institucion) {
+        let connection;
+        try {
+            connection = await oracledb.getConnection();
+            const result = await connection.execute(
+                `SELECT r.PARROQUIA AS PAR_CODIGO,
+                        (SELECT PAR_NOMBRE FROM GADMAPPS.PAR_PARROQUIAS WHERE PAR_CODIGO = r.PARROQUIA) AS PAR_NOMBRE,
+                        COUNT(*) AS CANTIDAD
+                 FROM GADMAPPS.OP_BACHERITO_REQ r
+                 WHERE r.PARROQUIA IN (
+                        SELECT PAR_CODIGO FROM GADMAPPS.OP_BACHERITO_GRUPO_PARROQUIAS WHERE ID_GRUPO = :idGrupo
+                       )
+                   AND r.ESTADO <> 'A'
+                   AND r.INSTITUCION_RESPONSABLE = :institucion
+                   AND r.ID NOT IN (SELECT ID_REQUERIMIENTO FROM GADMAPPS.OP_BACHERITO_GRUPO_TAREAS)
+                 GROUP BY r.PARROQUIA
+                 ORDER BY PAR_NOMBRE`,
+                { idGrupo, institucion }
+            );
+            return result.rows;
+        } finally {
+            if (connection) await connection.close();
+        }
+    }
+
+    // Mismo criterio que contarBachesDeParroquiasDeGrupo, pero devolviendo los ids a asignar.
+    async findIdsBachesDeParroquiasDeGrupo(idGrupo, institucion) {
+        let connection;
+        try {
+            connection = await oracledb.getConnection();
+            const result = await connection.execute(
+                `SELECT r.ID
+                 FROM GADMAPPS.OP_BACHERITO_REQ r
+                 WHERE r.PARROQUIA IN (
+                        SELECT PAR_CODIGO FROM GADMAPPS.OP_BACHERITO_GRUPO_PARROQUIAS WHERE ID_GRUPO = :idGrupo
+                       )
+                   AND r.ESTADO <> 'A'
+                   AND r.INSTITUCION_RESPONSABLE = :institucion
+                   AND r.ID NOT IN (SELECT ID_REQUERIMIENTO FROM GADMAPPS.OP_BACHERITO_GRUPO_TAREAS)
+                 ORDER BY r.FECHA_INGRESO DESC`,
+                { idGrupo, institucion }
+            );
+            return result.rows;
+        } finally {
+            if (connection) await connection.close();
+        }
+    }
+
+    // Asigna N baches al grupo en UNA sola transacción: entran todos o ninguno.
+    // Misma semántica que asignarTarea, extendida a varias filas.
+    async asignarTareasMasivo(idGrupo, idsRequerimiento, asignadoPor) {
+        let connection;
+        try {
+            connection = await oracledb.getConnection();
+
+            for (const idRequerimiento of idsRequerimiento) {
+                await connection.execute(
+                    `INSERT INTO GADMAPPS.OP_BACHERITO_GRUPO_TAREAS (ID_GRUPO, ID_REQUERIMIENTO, ASIGNADO_POR)
+                     VALUES (:idGrupo, :idRequerimiento, :asignadoPor)`,
+                    { idGrupo, idRequerimiento, asignadoPor },
+                    { autoCommit: false }
+                );
+
+                await connection.execute(
+                    `UPDATE GADMAPPS.OP_BACHERITO_REQ SET ESTADO = 'R' WHERE ID = :idRequerimiento`,
+                    { idRequerimiento },
+                    { autoCommit: false }
+                );
+            }
+
+            await connection.commit();
+        } catch (error) {
+            if (connection) await connection.rollback();
+            throw error;
+        } finally {
+            if (connection) await connection.close();
+        }
+    }
 }
 
 export default new GrupoRepository();

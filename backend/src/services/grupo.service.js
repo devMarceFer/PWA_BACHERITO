@@ -235,6 +235,29 @@ class GrupoService {
             throw new Error('PARROQUIA_NO_ENCONTRADA');
         }
     }
+
+    // Desglose por parroquia de lo que traería la asignación masiva, para que el
+    // administrador vea el alcance antes de confirmar (asignar cambia el estado real).
+    async previsualizarBachesPorParroquia(idGrupo) {
+        const filas = await grupoRepository.contarBachesDeParroquiasDeGrupo(idGrupo, INSTITUCION_BACHERITO);
+        const detalle = ConteoParroquiaModel.fromDatabaseArray(filas);
+        const total = detalle.reduce((suma, fila) => suma + fila.cantidad, 0);
+        return { total, detalle };
+    }
+
+    // Asigna al grupo todos los baches pendientes de sus parroquias. El conteo devuelto es
+    // el REAL al momento de asignar, que puede diferir del que mostró la previsualización.
+    async asignarBachesPorParroquia(idGrupo, asignadoPor) {
+        const filas = await grupoRepository.findIdsBachesDeParroquiasDeGrupo(idGrupo, INSTITUCION_BACHERITO);
+        const ids = filas.map(fila => fila.ID);
+
+        if (ids.length === 0) {
+            return { asignados: 0 };
+        }
+
+        await grupoRepository.asignarTareasMasivo(idGrupo, ids, asignadoPor);
+        return { asignados: ids.length };
+    }
 }
 
 export default new GrupoService();
