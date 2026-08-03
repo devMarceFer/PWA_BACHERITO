@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.routes.js';
 import funcionarioRoutes from './routes/funcionario.routes.js';
 import grupoRoutes from './routes/grupo.routes.js';
 import mistareaRoutes from './routes/mistarea.routes.js';
+import accesosRoutes from './routes/accesos.routes.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 import 'dotenv/config';
 
@@ -32,6 +33,7 @@ app.use('/api', authRoutes);
 app.use('/api', funcionarioRoutes);
 app.use('/api', grupoRoutes);
 app.use('/api', mistareaRoutes);
+app.use('/api', accesosRoutes);
 
 // El Middleware de errores SIEMPRE debe ir después de definir todas las rutas
 app.use(errorHandler);
