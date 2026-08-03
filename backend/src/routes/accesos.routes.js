@@ -5,8 +5,7 @@ import { requireAuth, requireModulo } from '../middlewares/auth.middleware.js';
 const router = Router();
 const soloGestionarAccesos = [requireAuth, requireModulo('GESTIONAR_ACCESOS')];
 
-// Las rutas literales van ANTES que las de parámetro: si /accesos/usuarios/:id se
-// declarara primero, /accesos/catalogo nunca llegaría a su controlador.
+// Orden: rutas literales antes de parametrizadas (convención, para legibilidad).
 router.get('/accesos/catalogo', soloGestionarAccesos, accesosController.catalogo);
 router.get('/accesos/usuarios', soloGestionarAccesos, accesosController.buscarUsuarios);
 router.get('/accesos/usuarios/:id', soloGestionarAccesos, accesosController.detalleUsuario);
