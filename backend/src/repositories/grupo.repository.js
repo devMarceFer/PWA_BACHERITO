@@ -3,6 +3,20 @@ import oracledb from 'oracledb';
 // Institución responsable del Bacherito en GADMAPPS.OP_BACHERITO_REQ (columna VARCHAR2).
 const INSTITUCION_BACHERITO = '61';
 
+// Criterio único de selección de baches asignables a un grupo: los de sus parroquias, no
+// atendidos, de la institución del Bacherito, y que no estén ya asignados a ningún grupo.
+// Vive en un solo lugar A PROPÓSITO: la previsualización y la asignación masiva DEBEN
+// seleccionar exactamente el mismo conjunto. Si divergen, el administrador confirma un
+// número y se asigna otro.
+const CRITERIO_BACHES_DE_PARROQUIAS_DEL_GRUPO = `
+    r.PARROQUIA IN (
+        SELECT PAR_CODIGO FROM GADMAPPS.OP_BACHERITO_GRUPO_PARROQUIAS WHERE ID_GRUPO = :idGrupo
+    )
+    AND r.ESTADO <> 'A'
+    AND r.INSTITUCION_RESPONSABLE = :institucion
+    AND r.ID NOT IN (SELECT ID_REQUERIMIENTO FROM GADMAPPS.OP_BACHERITO_GRUPO_TAREAS)
+`;
+
 class GrupoRepository {
     async findAll() {
         let connection;
@@ -499,12 +513,7 @@ class GrupoRepository {
                         (SELECT PAR_NOMBRE FROM GADMAPPS.PAR_PARROQUIAS WHERE PAR_CODIGO = r.PARROQUIA) AS PAR_NOMBRE,
                         COUNT(*) AS CANTIDAD
                  FROM GADMAPPS.OP_BACHERITO_REQ r
-                 WHERE r.PARROQUIA IN (
-                        SELECT PAR_CODIGO FROM GADMAPPS.OP_BACHERITO_GRUPO_PARROQUIAS WHERE ID_GRUPO = :idGrupo
-                       )
-                   AND r.ESTADO <> 'A'
-                   AND r.INSTITUCION_RESPONSABLE = :institucion
-                   AND r.ID NOT IN (SELECT ID_REQUERIMIENTO FROM GADMAPPS.OP_BACHERITO_GRUPO_TAREAS)
+                 WHERE ${CRITERIO_BACHES_DE_PARROQUIAS_DEL_GRUPO}
                  GROUP BY r.PARROQUIA
                  ORDER BY PAR_NOMBRE`,
                 { idGrupo, institucion }
@@ -523,12 +532,7 @@ class GrupoRepository {
             const result = await connection.execute(
                 `SELECT r.ID
                  FROM GADMAPPS.OP_BACHERITO_REQ r
-                 WHERE r.PARROQUIA IN (
-                        SELECT PAR_CODIGO FROM GADMAPPS.OP_BACHERITO_GRUPO_PARROQUIAS WHERE ID_GRUPO = :idGrupo
-                       )
-                   AND r.ESTADO <> 'A'
-                   AND r.INSTITUCION_RESPONSABLE = :institucion
-                   AND r.ID NOT IN (SELECT ID_REQUERIMIENTO FROM GADMAPPS.OP_BACHERITO_GRUPO_TAREAS)
+                 WHERE ${CRITERIO_BACHES_DE_PARROQUIAS_DEL_GRUPO}
                  ORDER BY r.FECHA_INGRESO DESC`,
                 { idGrupo, institucion }
             );
