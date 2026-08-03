@@ -218,8 +218,13 @@ de administración.
 3. **Accesos activos**, una fila por par módulo + rol, agrupados bajo el nombre de su sistema,
    cada uno con su botón de revocar. Cuando D6 aplica, el botón se deshabilita **con la
    explicación visible**, no en silencio.
-4. **Otorgar acceso**: los módulos del catálogo que el usuario todavía no tiene activos, cada uno
-   con un `<select>` de rol. Selección múltiple, confirmación, un solo `POST`.
+4. **Otorgar acceso**: **todos** los módulos del catálogo, cada uno con un `<select>` de rol.
+   Selección múltiple, confirmación, un solo `POST`.
+
+   No se ocultan los módulos que el usuario ya tiene: por D2 la clave es el par, y alguien con
+   `MIS_TAREAS` como TECNICO puede además necesitarlo como ADMIN. Lo que se deshabilita es el
+   **par exacto** ya activo, con el rol correspondiente marcado como "ya asignado" dentro del
+   `<select>`. Ocultar el módulo entero haría imposible el caso que D2 existe para permitir.
 5. **Revocados**, colapsados al pie. Es la razón de ser de D4.
 6. **Banner permanente**: *"Los cambios de acceso se aplican cuando el usuario cierre sesión y
    vuelva a entrar."* Los módulos van embebidos en el JWT firmado en el login y
