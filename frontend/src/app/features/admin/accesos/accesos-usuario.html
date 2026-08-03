@@ -38,29 +38,37 @@
     @if (accesosActivos().length === 0) {
       <p class="text-sm text-text-muted">Todavía no tiene ninguno.</p>
     } @else {
-      <ul class="flex flex-col gap-2">
-        @for (acceso of accesosActivos(); track acceso.idUmr) {
-          <li class="flex items-center gap-3 rounded-xl bg-surface-alt p-3">
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-medium text-text">{{ acceso.modulo }}</p>
-              <p class="truncate text-xs text-text-muted">{{ acceso.sistema }} · rol {{ acceso.rol }}</p>
-            </div>
-            <button
-              (click)="revocar(acceso)"
-              [disabled]="!puedeRevocar(acceso) || revocando() === acceso.idUmr"
-              class="shrink-0 rounded-lg p-2 text-error transition-all disabled:opacity-40"
-              [attr.aria-label]="'Revocar ' + acceso.modulo">
-              <mat-icon class="!text-xl !h-5 !w-5">remove_circle_outline</mat-icon>
-            </button>
-          </li>
+      @for (grupo of accesosActivosPorSistema(); track grupo.idSistema) {
+        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+          {{ grupo.sistema }}
+        </p>
 
-          @if (!puedeRevocar(acceso)) {
-            <p class="-mt-1 px-3 text-[11px] text-text-muted">
-              No puedes quitarte a ti mismo este acceso: quedarías sin forma de recuperarlo.
-            </p>
+        <ul class="mb-4 flex flex-col gap-2">
+          @for (acceso of grupo.accesos; track acceso.idUmr) {
+            <li class="flex flex-col gap-1 rounded-xl bg-surface-alt p-3">
+              <div class="flex items-center gap-3">
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium text-text">{{ acceso.modulo }}</p>
+                  <p class="truncate text-xs text-text-muted">rol {{ acceso.rol }}</p>
+                </div>
+                <button
+                  (click)="revocar(acceso)"
+                  [disabled]="!puedeRevocar(acceso) || revocando() === acceso.idUmr"
+                  class="shrink-0 rounded-lg p-2 text-error transition-all disabled:opacity-40"
+                  [attr.aria-label]="'Revocar ' + acceso.modulo">
+                  <mat-icon class="!text-xl !h-5 !w-5">remove_circle_outline</mat-icon>
+                </button>
+              </div>
+
+              @if (!puedeRevocar(acceso)) {
+                <p class="px-1 text-[11px] text-text-muted">
+                  No puedes quitarte a ti mismo este acceso: quedarías sin forma de recuperarlo.
+                </p>
+              }
+            </li>
           }
-        }
-      </ul>
+        </ul>
+      }
     }
 
     @if (errorRevocar()) {

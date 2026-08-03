@@ -1,6 +1,4 @@
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { AccesosService, Acceso, Catalogo, DetalleUsuario, Otorgamiento } from './accesos.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -13,7 +11,7 @@ const MODULO_DE_GESTION = 'GESTIONAR_ACCESOS';
 @Component({
   selector: 'app-accesos-usuario',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, ButtonComponent],
+  imports: [MatIconModule, ButtonComponent],
   templateUrl: './accesos-usuario.html'
 })
 export class AccesosUsuarioComponent {
@@ -43,6 +41,24 @@ export class AccesosUsuarioComponent {
   accesosRevocados = computed(() => this.detalle()?.accesos.filter(a => a.estado === 'N') ?? []);
   sinAccesos = computed(() => this.detalle() !== null && this.accesosActivos().length === 0);
 
+  // Agrupa los accesos activos por sistema, igual que hace "Otorgar acceso" con el catálogo,
+  // para que ambas secciones compartan la misma estructura visual. Se deriva de los propios
+  // accesos (no del catálogo) para no depender de que este ya haya llegado.
+  accesosActivosPorSistema = computed(() => {
+    const grupos = new Map<number, { idSistema: number; sistema: string; accesos: Acceso[] }>();
+
+    for (const acceso of this.accesosActivos()) {
+      const grupo = grupos.get(acceso.idSistema);
+      if (grupo) {
+        grupo.accesos.push(acceso);
+      } else {
+        grupos.set(acceso.idSistema, { idSistema: acceso.idSistema, sistema: acceso.sistema, accesos: [acceso] });
+      }
+    }
+
+    return Array.from(grupos.values());
+  });
+
   // AuthService no expone el id numérico del usuario en sesión, solo usuarioActual() (correo)
   // y cedulaActual(). Se compara por correo, que es único en RBAC_USUARIOS.
   esElActor = computed(() => this.detalle()?.usuario.email === this.authService.usuarioActual());
@@ -51,6 +67,9 @@ export class AccesosUsuarioComponent {
     // Recarga sola cuando el padre cambia de usuario seleccionado.
     effect(() => {
       const id = this.idUsuario();
+      // Limpia el mensaje de éxito de la persona anterior: si no, al pasar de un usuario a
+      // otro se arrastraría la confirmación de la operación que se hizo sobre el anterior.
+      this.mensajeExito.set(null);
       this.cargar(id);
     });
   }
@@ -58,7 +77,6 @@ export class AccesosUsuarioComponent {
   private cargar(idUsuario: number) {
     this.cargando.set(true);
     this.errorCarga.set(null);
-    this.mensajeExito.set(null);
     this.seleccion.set(new Map());
 
     this.accesosService.obtenerCatalogo().subscribe({
@@ -71,6 +89,10 @@ export class AccesosUsuarioComponent {
             this.cargando.set(false);
           },
           error: () => {
+            // Se limpia detalle: mostrar la lista vieja junto al error de carga hace creer
+            // al administrador que su cambio (p.ej. una revocación) no se aplicó, cuando en
+            // realidad el problema es solo este refresco posterior.
+            this.detalle.set(null);
             this.errorCarga.set('No se pudieron cargar los accesos de esta persona.');
             this.cargando.set(false);
           }
