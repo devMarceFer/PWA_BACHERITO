@@ -20,7 +20,7 @@
             <option [value]="parroquia.codigo">{{ parroquia.nombre }}</option>
           }
         </select>
-        <mat-icon class="absolute right-3.5 text-text-muted pointer-events-none !text-xl !h-5 !w-5">expand_more</mat-icon>
+        <mat-icon class="absolute right-3.5 text-text-muted pointer-events-none !text-xl !h-6 !w-6">expand_more</mat-icon>
       </div>
     </div>
 
@@ -33,7 +33,7 @@
         class="flex flex-col items-center justify-center min-h-[150px] cursor-pointer rounded-2xl border-2 border-dashed border-border bg-surface-alt p-5 text-center transition-all duration-200 hover:border-primary">
 
         @if (!imagenPreview()) {
-          <mat-icon class="text-text-muted !text-4xl !h-10 !w-10 mb-2">add_photo_alternate</mat-icon>
+          <mat-icon class="text-text-muted !text-[40px] !h-10 !w-10 mb-2">add_photo_alternate</mat-icon>
           <p class="text-xs font-medium text-text-muted">Tomar foto o seleccionar imagen</p>
         } @else {
           <img [src]="imagenPreview()" alt="Vista previa del bache" class="w-full max-h-[200px] object-cover rounded-xl shadow-sm">
@@ -51,7 +51,7 @@
         type="button"
         (click)="obtenerUbicacionActual()"
         class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-semibold text-white shadow-md shadow-emerald-600/10 transition-all duration-200 hover:bg-emerald-700 active:scale-[0.98]">
-        <mat-icon class="!text-lg !h-5 !w-5">near_me</mat-icon>
+        <mat-icon class="!text-base !h-5 !w-5">near_me</mat-icon>
         Usar mi ubicación
       </button>
 
@@ -67,14 +67,14 @@
           type="button"
           (click)="buscarDireccion()"
           class="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-surface-alt text-text transition-all duration-150 hover:bg-border active:scale-95">
-          <mat-icon class="!text-xl">search</mat-icon>
+          <mat-icon class="!text-xl !h-6 !w-6">search</mat-icon>
         </button>
       </div>
     </div>
 
     <!-- Calle detectada bajo el marcador (geocodificación inversa) -->
     <div class="flex items-center gap-2 rounded-xl bg-success-bg px-4 py-3 text-sm font-medium text-success">
-      <mat-icon class="!text-lg !h-5 !w-5 shrink-0">location_on</mat-icon>
+      <mat-icon class="!text-base !h-5 !w-5 shrink-0">location_on</mat-icon>
       <span class="truncate">{{ calleDetectada() || 'Ubica el bache en el mapa para detectar la calle' }}</span>
     </div>
 
@@ -86,7 +86,7 @@
     <button
       type="submit"
       class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-4 text-base font-bold text-white shadow-lg shadow-emerald-600/15 transition-all duration-200 hover:bg-emerald-700 active:scale-[0.98] mt-2">
-      <mat-icon class="!text-xl !h-5 !w-5">send</mat-icon>
+      <mat-icon class="!text-xl !h-6 !w-6">send</mat-icon>
       Enviar Reporte
     </button>
 

@@ -30,6 +30,15 @@
   font-feature-settings: 'liga';
 }
 
+/* Angular Material icons: alineación correcta en flex y con texto */
+mat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  line-height: 1;
+}
+
 /* Reactiva el selector "dark:" en base al atributo [data-theme] en <html>
    (controlado por ThemeService) en lugar del "prefers-color-scheme" del SO,
    así el usuario puede alternar el tema manualmente desde la app. */
