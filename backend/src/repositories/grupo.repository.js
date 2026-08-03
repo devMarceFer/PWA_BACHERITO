@@ -408,6 +408,84 @@ class GrupoRepository {
             if (connection) await connection.close();
         }
     }
+
+    async findParroquiasDeGrupo(idGrupo) {
+        let connection;
+        try {
+            connection = await oracledb.getConnection();
+            const result = await connection.execute(
+                `SELECT gp.PAR_CODIGO,
+                        (SELECT PAR_NOMBRE FROM GADMAPPS.PAR_PARROQUIAS WHERE PAR_CODIGO = gp.PAR_CODIGO) AS PAR_NOMBRE
+                 FROM GADMAPPS.OP_BACHERITO_GRUPO_PARROQUIAS gp
+                 WHERE gp.ID_GRUPO = :idGrupo
+                 ORDER BY PAR_NOMBRE`,
+                { idGrupo }
+            );
+            return result.rows;
+        } finally {
+            if (connection) await connection.close();
+        }
+    }
+
+    // Parroquias que todavía no tiene ningún grupo. Alimenta el selector del administrador,
+    // para que no pueda ni intentar una ya tomada.
+    async findParroquiasDisponibles() {
+        let connection;
+        try {
+            connection = await oracledb.getConnection();
+            const result = await connection.execute(
+                `SELECT p.PAR_CODIGO, p.PAR_NOMBRE
+                 FROM GADMAPPS.PAR_PARROQUIAS p
+                 WHERE p.PAR_CODIGO NOT IN (SELECT PAR_CODIGO FROM GADMAPPS.OP_BACHERITO_GRUPO_PARROQUIAS)
+                 ORDER BY p.PAR_NOMBRE`
+            );
+            return result.rows;
+        } finally {
+            if (connection) await connection.close();
+        }
+    }
+
+    // Agrega parroquias al grupo. Transaccional: si una viola el UNIQUE, no entra ninguna.
+    async asignarParroquias(idGrupo, parCodigos, asignadoPor) {
+        let connection;
+        try {
+            connection = await oracledb.getConnection();
+
+            for (const parCodigo of parCodigos) {
+                await connection.execute(
+                    `INSERT INTO GADMAPPS.OP_BACHERITO_GRUPO_PARROQUIAS (ID_GRUPO, PAR_CODIGO, ASIGNADO_POR)
+                     VALUES (:idGrupo, :parCodigo, :asignadoPor)`,
+                    { idGrupo, parCodigo, asignadoPor },
+                    { autoCommit: false }
+                );
+            }
+
+            await connection.commit();
+        } catch (error) {
+            if (connection) await connection.rollback();
+            throw error;
+        } finally {
+            if (connection) await connection.close();
+        }
+    }
+
+    // Devuelve cuántas filas borró: 0 significa que esa parroquia no era de ese grupo.
+    // NO toca OP_BACHERITO_GRUPO_TAREAS: quitar territorio no quita trabajo ya asignado.
+    async quitarParroquia(idGrupo, parCodigo) {
+        let connection;
+        try {
+            connection = await oracledb.getConnection();
+            const result = await connection.execute(
+                `DELETE FROM GADMAPPS.OP_BACHERITO_GRUPO_PARROQUIAS
+                 WHERE ID_GRUPO = :idGrupo AND PAR_CODIGO = :parCodigo`,
+                { idGrupo, parCodigo },
+                { autoCommit: true }
+            );
+            return result.rowsAffected;
+        } finally {
+            if (connection) await connection.close();
+        }
+    }
 }
 
 export default new GrupoRepository();

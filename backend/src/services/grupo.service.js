@@ -1,5 +1,5 @@
 import grupoRepository from '../repositories/grupo.repository.js';
-import { GrupoModel, TecnicoModel, TareaModel, BacheDisponibleModel, BacheMapaModel, ResumenAdminModel } from '../models/grupo.model.js';
+import { GrupoModel, TecnicoModel, TareaModel, BacheDisponibleModel, BacheMapaModel, ResumenAdminModel, ParroquiaGrupoModel, ConteoParroquiaModel } from '../models/grupo.model.js';
 
 // Institución responsable del Bacherito en GADMAPPS.OP_BACHERITO_REQ (columna VARCHAR2).
 const INSTITUCION_BACHERITO = '61';
@@ -194,6 +194,45 @@ class GrupoService {
         const filasAfectadas = await grupoRepository.quitarTecnico(id, usuario);
         if (filasAfectadas === 0) {
             throw new Error('TECNICO_NO_ENCONTRADO');
+        }
+    }
+
+    async obtenerParroquiasDeGrupo(idGrupo) {
+        const filas = await grupoRepository.findParroquiasDeGrupo(idGrupo);
+        return ParroquiaGrupoModel.fromDatabaseArray(filas);
+    }
+
+    async obtenerParroquiasDisponibles() {
+        const filas = await grupoRepository.findParroquiasDisponibles();
+        return ParroquiaGrupoModel.fromDatabaseArray(filas);
+    }
+
+    // Agrega parroquias al grupo (no reemplaza las que ya tenía).
+    // ORA-00001 = violación de UNIQUE(PAR_CODIGO): la parroquia ya es de otro grupo.
+    async asignarParroquias(idGrupo, parroquias, asignadoPor) {
+        if (!Array.isArray(parroquias) || parroquias.length === 0) {
+            throw new Error('VALIDACION_FALLIDA: Debes seleccionar al menos una parroquia.');
+        }
+        if (parroquias.some(codigo => !codigo || Number.isNaN(Number(codigo)))) {
+            throw new Error('VALIDACION_FALLIDA: La lista de parroquias contiene un código inválido.');
+        }
+
+        try {
+            await grupoRepository.asignarParroquias(idGrupo, parroquias.map(Number), asignadoPor);
+        } catch (error) {
+            if (error.errorNum === 1) {
+                throw new Error('PARROQUIA_YA_ASIGNADA');
+            }
+            throw error;
+        }
+    }
+
+    // Quitar una parroquia solo cambia el territorio del grupo. Los baches que ya se le
+    // asignaron se quedan con él (decisión D2): puede haber un técnico con el trabajo en curso.
+    async quitarParroquia(idGrupo, parCodigo) {
+        const filasBorradas = await grupoRepository.quitarParroquia(idGrupo, parCodigo);
+        if (filasBorradas === 0) {
+            throw new Error('PARROQUIA_NO_ENCONTRADA');
         }
     }
 }

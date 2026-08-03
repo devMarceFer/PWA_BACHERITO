@@ -101,3 +101,29 @@ export class BacheDisponibleModel {
         return rows.map(row => new BacheDisponibleModel(row));
     }
 }
+
+// Parroquia a cargo de un grupo de trabajo.
+export class ParroquiaGrupoModel {
+    constructor(dbRow) {
+        this.parCodigo = dbRow.PAR_CODIGO;
+        this.parNombre = dbRow.PAR_NOMBRE;
+    }
+
+    static fromDatabaseArray(rows) {
+        return rows.map(row => new ParroquiaGrupoModel(row));
+    }
+}
+
+// Conteo de baches pendientes en una parroquia, para la previsualización de la
+// asignación masiva.
+export class ConteoParroquiaModel {
+    constructor(dbRow) {
+        this.parCodigo = dbRow.PAR_CODIGO;
+        this.parNombre = dbRow.PAR_NOMBRE;
+        this.cantidad = Number(dbRow.CANTIDAD) || 0;
+    }
+
+    static fromDatabaseArray(rows) {
+        return rows.map(row => new ConteoParroquiaModel(row));
+    }
+}
