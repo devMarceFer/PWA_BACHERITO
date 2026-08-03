@@ -1431,7 +1431,7 @@ Crear `frontend/src/app/features/admin/accesos/accesos.html`:
         <label for="busqueda" class="mb-2 block text-sm font-semibold text-text">
           Buscar persona
         </label>
-        <div class="flex gap-2">
+        <div class="flex items-start gap-2">
           <input
             id="busqueda"
             type="text"
@@ -1439,11 +1439,16 @@ Crear `frontend/src/app/features/admin/accesos/accesos.html`:
             (keyup.enter)="buscar()"
             placeholder="Cédula, nombre o correo"
             class="min-w-0 flex-1 rounded-xl border border-outline px-3 py-2.5 text-sm outline-none focus:border-primary" />
-          <app-button
-            texto="Buscar"
-            [cargando]="buscando()"
-            (clic)="buscar()">
-          </app-button>
+          <!-- app-button renderiza w-full, por eso va envuelto con un ancho fijo. -->
+          <div class="w-28 shrink-0">
+            <app-button
+              type="button"
+              variant="primary"
+              [cargando]="buscando()"
+              (btnClick)="buscar()">
+              Buscar
+            </app-button>
+          </div>
         </div>
 
         @if (errorBusqueda()) {
@@ -1490,10 +1495,12 @@ Crear `frontend/src/app/features/admin/accesos/accesos.html`:
 </div>
 ```
 
-> **Antes de escribir esta plantilla, abrí `frontend/src/app/features/admin/asignar-grupo/asignar-grupo.html`
-> y confirmá las entradas reales de `<app-button>`** (nombre de la propiedad del texto, del estado
-> de carga y del evento de clic). Si no coinciden con `texto` / `cargando` / `clic`, usá las reales
-> y dejá anotada la diferencia en el reporte de la tarea. No inventes nombres.
+> **Contrato de `<app-button>`, verificado en el código** (`shared/components/button/button.component.ts`
+> y `.html`): entradas `type` (`'button' | 'submit' | 'reset'`), `variant`
+> (`'primary' | 'secondary' | 'danger'`), `disabled`, `cargando`; salida **`btnClick`**. El texto va
+> por **proyección de contenido** (`<ng-content>`), no por una entrada. **No existe `texto` ni
+> `clic`.** Cuando `cargando` es `true` el botón muestra "Procesando..." e ignora el texto
+> proyectado. El botón renderiza `w-full`, así que en una fila hay que envolverlo con un ancho fijo.
 
 - [ ] **Paso 3: Agregar la ruta**
 
@@ -1877,10 +1884,12 @@ Crear `frontend/src/app/features/admin/accesos/accesos-usuario.html`:
       }
 
       <app-button
-        texto="Otorgar seleccionados"
+        type="button"
+        variant="primary"
         [cargando]="guardando()"
-        [deshabilitado]="otorgamientosPendientes().length === 0"
-        (clic)="otorgar()">
+        [disabled]="otorgamientosPendientes().length === 0"
+        (btnClick)="otorgar()">
+        Otorgar seleccionados
       </app-button>
 
       @if (errorOtorgar()) {
@@ -1917,8 +1926,8 @@ Crear `frontend/src/app/features/admin/accesos/accesos-usuario.html`:
 }
 ```
 
-> Igual que en la tarea 6: **confirmá las entradas reales de `<app-button>`** antes de escribir
-> esto, incluida la de deshabilitado. Si `deshabilitado` no existe, usá la real.
+> Mismo contrato de `<app-button>` que la tarea 6: `type`, `variant`, `disabled`, `cargando`,
+> salida `btnClick`, texto por proyección de contenido.
 
 - [ ] **Paso 3: Montar el hijo en el padre**
 
@@ -2021,10 +2030,10 @@ git commit -m "docs: reporte de entrega de la gestion de accesos"
 
 Puntos donde este plan puede inducir defectos, para mirar con atención en la revisión:
 
-1. **`<app-button>`**: las entradas usadas (`texto`, `cargando`, `deshabilitado`, `clic`) están
-   supuestas por analogía, no verificadas contra el componente. Las tareas 6 y 7 obligan a
-   confirmarlas. En un ciclo anterior el plan asumió `app-navbar-top`/`menuClic` cuando lo real era
-   `app-toolbar`/`menuClick`.
+1. **`<app-button>`**: el contrato ya está verificado contra el componente (`type`, `variant`,
+   `disabled`, `cargando`, `btnClick`, texto proyectado). El borrador de este plan usaba
+   `texto`/`clic`/`deshabilitado`, que **no existen**; se corrigió antes de dispatchar. Si aparece
+   alguno de esos nombres en el código entregado, es un defecto.
 2. **Cada signal de error se pinta**: `errorBusqueda`, `errorCarga`, `errorOtorgar`, `errorRevocar`.
    Contar los `.set(` contra los `@if` en las plantillas. En `grupo-detalle` hubo 11 escrituras
    contra un solo renderizado y cuatro operaciones fallaban en silencio.
