@@ -54,3 +54,16 @@
 /backend/.env
 # Workspace de scratch del proceso SDD (briefs, reportes, paquetes de revision)
 .superpowers/
+
+# Claude Code / CLI (mantiene reglas, ignora estado local)
+.claude/*
+!.claude/CLAUDE.md
+!.claude/rules/
+
+# Superpowers / Spec-Driven Development
+# Descomenta la siguiente línea SI NO quieres versionar la documentación del proyecto:
+# .superpowers/
+
+# O ignora solo cachés/temporales dentro de .superpowers:
+.superpowers/cache/
+.superpowers/tmp/
