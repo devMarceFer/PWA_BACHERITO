@@ -1,0 +1,35 @@
+<!-- Fondo de pantalla; el color de fondo sigue el token global --color-bg (claro/oscuro) -->
+<div class="fixed inset-0 flex items-center justify-center bg-bg p-4 box-border overflow-hidden select-none">
+
+  <!--
+    El 'main':
+    - Ocupa todo el alto de la pantalla gracias a 'h-full'
+    - Superficie translúcida sobre tokens (bg-surface se adapta a claro/oscuro)
+    - Efecto esmerilado/cristal con 'backdrop-blur-lg'
+    - Esquinas muy redondeadas con 'rounded-[32px]'
+  -->
+  <main class="w-full max-w-[360px] h-full rounded-[32px] border border-border bg-surface/80 p-6 shadow-2xl backdrop-blur-lg flex flex-col justify-center gap-6 animate-fade-in-up">
+
+    <!-- Cabecera / Badge de Seguridad -->
+    <div class="flex flex-col items-center text-center">
+      <h3 class="text-3xl font-extrabold text-primary">Iniciar Sesión</h3>
+      <p class="text-3xs font-medium text-text-muted mt-1 leading-relaxed">
+        Acceso exclusivo para funcionarios y ciudadanos ambateños
+      </p>
+    </div>
+
+    <!-- BOTÓN ÚNICO: Iniciar sesión con Microsoft -->
+    <div class="flex flex-col gap-4 mt-6">
+      <button
+        type="button"
+        (click)="loginConAzure()"
+        class="w-full px-6 py-4 rounded-xl bg-[#0078D4] text-white font-semibold text-sm transition-all hover:bg-[#106EBE] active:scale-95 flex items-center justify-center gap-3">
+        <!-- Logo oficial de Microsoft (4 cuadrados azules) -->
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z"/>
+        </svg>
+        Iniciar sesión con Microsoft
+      </button>
+    </div>
+  </main>
+</div>
