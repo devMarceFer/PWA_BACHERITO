@@ -11,6 +11,9 @@ import { verificarIdTokenCognito } from '../utils/cognito-verifier.util.js';
 
 const NOMBRE_SISTEMA = process.env.SISTEMA_NOMBRE;
 const JWT_SECRET = process.env.JWT_SECRET;
+const COGNITO_DOMAIN = process.env.COGNITO_DOMAIN;
+const COGNITO_CLIENT_ID = process.env.COGNITO_CLIENT_ID;
+const COGNITO_CLIENT_SECRET = process.env.COGNITO_CLIENT_SECRET;
 
 class AuthService {
     // Se llama justo después de que el funcionario confirma el código de verificación en Cognito.
@@ -23,17 +26,24 @@ class AuthService {
             return { ...UsuarioModel.fromDatabaseArray(existentes)[0], creado: false };
         }
 
-        let funcionario;
+        let funcionario = null;
+        let nombre = datos.nombre;
+        let apellido = datos.apellido;
+
+        // Intenta obtener datos del funcionario desde VW_TH_FUNCIONARIOS
+        // Si no existe, permite el registro igualmente (usuario ya tendrá permisos en RBAC)
         try {
             funcionario = await funcionarioService.buscarPorCedula(datos.cedula);
+            nombre = funcionario.nombres || datos.nombre;
+            apellido = funcionario.apellidos || datos.apellido;
+            console.log(`✅ [Registro] Funcionario encontrado en VW_TH_FUNCIONARIOS: ${datos.cedula}`);
         } catch (error) {
-            throw new Error('NO_ES_FUNCIONARIO');
+            console.warn(`⚠️ [Registro] Funcionario NO encontrado en VW_TH_FUNCIONARIOS (${datos.cedula}), pero permitiendo registro. Usuario deberá tener módulos asignados en RBAC.`);
+            // No lanzar error - permitir que se registre si ya tiene permisos
         }
 
-        // Los datos de identidad se toman de la vista institucional, no de lo que envía el
-        // cliente, para que una petición manipulada no pueda registrar un nombre/apellido falso.
-        const nombre = funcionario.nombres || datos.nombre;
-        const apellido = funcionario.apellidos || datos.apellido;
+        // Los datos de identidad se toman de VW_TH_FUNCIONARIOS si existen,
+        // sino se usan los datos que envía el cliente
         const passwordHashPlaceholder = await bcrypt.hash(crypto.randomUUID(), 10); // nunca podrá usarse para autenticar localmente
 
         try {
@@ -65,6 +75,7 @@ class AuthService {
     // Verifica el ID Token, crea el registro de sesión (RBAC_SESIONES) y firma un JWT propio cuya
     // duración proviene de RBAC_SISTEMAS.TOKEN_EXPIRACION_MIN para el sistema BACHERITO.
     async iniciarSesion({ idTokenJwt, ipOrigen, userAgent }) {
+        console.log(`🔐 [Login] Iniciando sesión...`);
         let claims;
         try {
             claims = await verificarIdTokenCognito(idTokenJwt);
@@ -75,12 +86,16 @@ class AuthService {
             throw new Error('TOKEN_INVALIDO');
         }
 
+        const email = (claims.email || '').trim().toLowerCase();
+        console.log(`📧 [Login] Email del token: ${email}`);
+
         const grupos = Array.isArray(claims['cognito:groups']) ? claims['cognito:groups'] : [];
+        console.log(`👥 [Login] Grupos de Cognito: [${grupos.join(', ')}]`);
         if (!grupos.includes(NOMBRE_SISTEMA)) {
+            console.error(`❌ [Login] Usuario ${email} NO está en grupo ${NOMBRE_SISTEMA}`);
             throw new Error('SIN_ACCESO_SATELITE');
         }
 
-        const email = claims.email;
         if (!email) {
             throw new Error('TOKEN_SIN_EMAIL');
         }
@@ -89,8 +104,9 @@ class AuthService {
 
         if (usuarios.length === 0) {
             // Red de seguridad: si el alta posterior a la verificación no se completó por algún motivo,
-            // se resuelve aquí mismo con los datos que trae el propio ID Token verificado. El username
-            // de Cognito ES la cédula (así se configuró el alta), por eso sirve para la validación de funcionario.
+            // se resuelve aquí mismo con los datos que trae el propio ID Token verificado.
+            // Para usuarios federados (Azure AD), cognito:username puede ser un GUID (>20 chars)
+            // que no cabe en NUM_DOCUMENTO VARCHAR2(20), causando ORA-12899.
             try {
                 await this.registrarUsuarioCognito({
                     correo: email,
@@ -99,27 +115,39 @@ class AuthService {
                     apellido: claims.family_name || 'Sin apellido'
                 });
             } catch (error) {
-                throw new Error('SOLO_FUNCIONARIOS');
+                // ORA-12899 = tamaño de columna insuficiente (usuario federado con username tipo GUID)
+                if (error.errorNum === 12899) {
+                    console.error(`❌ [Auto-registro] Username de Cognito demasiado largo (federado/Azure): ${claims['cognito:username']}`);
+                    throw new Error('USUARIO_NO_REGISTRADO');
+                }
+                console.error(`❌ [Auto-registro] Error al registrar: ${error.message}`);
+                throw new Error('USUARIO_NO_REGISTRADO');
             }
             usuarios = await usuarioRepository.findByEmail(email);
         }
 
         const usuario = UsuarioModel.fromDatabaseArray(usuarios)[0];
+        console.log(`📋 [Login] Usuario encontrado: ${usuario.email} (ID: ${usuario.idUsuario}, Tipo: ${usuario.tipoUsuario}, Bloqueado: ${usuario.bloqueado}, Estado: ${usuario.estado})`);
 
         if (usuario.bloqueado === 1) {
+            console.error(`❌ [Login] USUARIO_BLOQUEADO: ${usuario.email}`);
             throw new Error('USUARIO_BLOQUEADO');
         }
         if (usuario.estado !== 'S') {
+            console.error(`❌ [Login] USUARIO_INACTIVO: ${usuario.email} (estado: ${usuario.estado})`);
             throw new Error('USUARIO_INACTIVO');
         }
         // Bacherito es exclusiva para funcionarios municipales: un ciudadano (registrado antes de
         // este cambio, o dado de alta por otra vía) no puede iniciar sesión aunque su cuenta esté activa.
         if (usuario.tipoUsuario !== 'F') {
+            console.error(`❌ [Login] SOLO_FUNCIONARIOS: ${usuario.email} (tipo: ${usuario.tipoUsuario})`);
             throw new Error('SOLO_FUNCIONARIOS');
         }
 
         const autorizaciones = await autorizacionService.obtenerAutorizaciones(usuario.idUsuario);
+        console.log(`📋 [Login] Autorizaciones obtenidas para ${usuario.email}: ${autorizaciones.length} módulos`);
         if (autorizaciones.length === 0) {
+            console.error(`❌ [Login] SIN_MODULOS_ASIGNADOS: ${usuario.email}`);
             throw new Error('SIN_MODULOS_ASIGNADOS');
         }
 
@@ -170,6 +198,68 @@ class AuthService {
     async cerrarSesion(jwtPropio) {
         const payload = jwt.verify(jwtPropio, JWT_SECRET, { algorithms: ['HS256'] });
         await sesionRepository.revocarPorJti(payload.jti);
+    }
+
+    // Intercambia el código de autorización OAuth2 recibido de Cognito por tokens (id_token, access_token, refresh_token).
+    // Este es el paso 2 del flujo Authorization Code Grant con Cognito Hosted UI / Azure AD federation.
+    async intercambiarCodigoPorTokens(code, redirectUri) {
+        if (!code) {
+            throw new Error('El código de autorización es requerido');
+        }
+
+        if (!redirectUri) {
+            throw new Error('El redirect_uri es requerido');
+        }
+        if (!COGNITO_DOMAIN || !COGNITO_CLIENT_ID) {
+            throw new Error('Faltan COGNITO_DOMAIN o COGNITO_CLIENT_ID en la configuración');
+        }
+
+        const tokenUrl = `https://${COGNITO_DOMAIN}/oauth2/token`;
+
+        const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+        const params = {
+            grant_type: 'authorization_code',
+            client_id: COGNITO_CLIENT_ID,
+            code,
+            redirect_uri: redirectUri,
+        };
+
+        // Si el App Client tiene secreto, Cognito exige autenticación HTTP Basic. Si no lo tiene,
+        // enviar una cabecera Basic con secreto vacío hace que rechace la petición, así que se
+        // autentica solo con el client_id del cuerpo.
+        if (COGNITO_CLIENT_SECRET) {
+            headers.Authorization = 'Basic ' + Buffer.from(
+                `${COGNITO_CLIENT_ID}:${COGNITO_CLIENT_SECRET}`
+            ).toString('base64');
+        }
+
+        try {
+            const response = await fetch(tokenUrl, {
+                method: 'POST',
+                headers,
+                body: new URLSearchParams(params).toString(),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('Cognito token exchange error:', response.status, errorData);
+                throw new Error(`Cognito rechazó el intercambio: ${errorData.error || response.statusText}`);
+            }
+
+            const data = await response.json();
+            if (!data.id_token) {
+                throw new Error('Cognito no devolvió id_token (revisa que el scope openid esté habilitado)');
+            }
+
+            return {
+                idToken: data.id_token,
+                accessToken: data.access_token,
+                refreshToken: data.refresh_token,
+            };
+        } catch (error) {
+            console.error('Error intercambiando código por tokens:', error.message);
+            throw new Error(`Fallo al intercambiar código de autorización: ${error.message}`);
+        }
     }
 }
 

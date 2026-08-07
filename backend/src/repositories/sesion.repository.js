@@ -28,6 +28,24 @@ class SesionRepository {
         });
     }
 
+    async findByJti(tokenJti) {
+        return executeWithRetry(async () => {
+            let connection;
+            try {
+                connection = await oracledb.getConnection();
+                const sql = `
+                    SELECT ID_USUARIO, TOKEN_JTI, REVOCADO, EXPIRA_EN
+                    FROM GADMAPPS.RBAC_SESIONES
+                    WHERE TOKEN_JTI = :tokenJti
+                `;
+                const result = await connection.execute(sql, { tokenJti });
+                return result.rows || [];
+            } finally {
+                if (connection) await connection.close();
+            }
+        });
+    }
+
     async revocarPorJti(tokenJti) {
         return executeWithRetry(async () => {
             let connection;

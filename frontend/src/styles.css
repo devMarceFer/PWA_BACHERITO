@@ -101,3 +101,63 @@ mat-icon {
 }
 
 /*Coordenadas obtenidas: Lat: -1.268225273307791, Lng: -78.62771494152528*/
+
+/* Keyframes y animaciones personalizadas (migradas de tailwind.config.js a @theme)
+   Tailwind v4 carga el archivo config.js solo con @config; sin esa directiva, define
+   los keyframes aquí en el bloque @theme existente para que Tailwind los compile. */
+@layer utilities {
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(15px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideInLeft {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideInUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  /* Utilidades de animación personalizadas */
+  .animate-fade-in-up {
+    animation: fadeInUp 0.8s ease-out forwards;
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.2s ease-out forwards;
+  }
+
+  .animate-slide-in-left {
+    animation: slideInLeft 0.25s ease-out forwards;
+  }
+
+  .animate-slide-in-up {
+    animation: slideInUp 0.25s ease-out forwards;
+  }
+}

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import helmet from 'helmet';
 import { initializePool, closePool } from './config/database.js';
@@ -10,17 +11,24 @@ import grupoRoutes from './routes/grupo.routes.js';
 import mistareaRoutes from './routes/mistarea.routes.js';
 import accesosRoutes from './routes/accesos.routes.js';
 import healthRoutes from './routes/health.routes.js';
+import configRoutes from './routes/config.routes.js';
 import { errorHandler } from './middlewares/error.middleware.js';
-import 'dotenv/config';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Confiar en el proxy (Nginx) para obtener la IP real del cliente
+// Necesario para: (1) rate limiting por IP, (2) auditoría de RBAC_SESIONES.IP_ORIGEN, (3) express-rate-limit
+app.set('trust proxy', 1);
 
 // Cabeceras de seguridad HTTP (CSP, HSTS, X-Frame-Options, etc.)
 app.use(helmet());
 
 // CORS configurado con whitelist de orígenes permitidos
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:4200').split(',');
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
+  .split(',')
+  .map(origin => origin.trim());
+
 app.use(cors({
     origin: allowedOrigins,
     credentials: true,
@@ -36,6 +44,7 @@ app.use(express.json({ limit: '10mb' }));
 
 // Registro de endpoints
 app.use(healthRoutes);  // Health check disponible en /health (sin prefijo /api)
+app.use('/api', configRoutes);  // Configuración pública (sin autenticación requerida)
 app.use('/api', parroquiaRoutes);
 app.use('/api', requerimientoRoutes);
 app.use('/api', authRoutes);
@@ -47,23 +56,11 @@ app.use('/api', accesosRoutes);
 // El Middleware de errores SIEMPRE debe ir después de definir todas las rutas
 app.use(errorHandler);
 
-async function startServer() {
-    await initializePool();
+// Exportar app para que bin/www se encargue del startup
+export default app;
 
-    const server = app.listen(PORT, () => {
-        console.log(`🚀 Arquitectura de 7 capas corriendo en http://localhost:${PORT}`);
-    });
-
-    const shutdown = async () => {
-        console.log('\nCerrando de forma segura...');
-        server.close(async () => {
-            await closePool();
-            process.exit(0);
-        });
-    };
-
-    process.on('SIGINT', shutdown);
-    process.on('SIGTERM', shutdown);
-}
-
-startServer();
+// Inicializar pool de base de datos cuando se importe
+await initializePool().catch(error => {
+    console.error('❌ Error inicializando pool de BD:', error.message);
+    process.exit(1);
+});
