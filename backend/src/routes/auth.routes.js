@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import authController from '../controllers/auth.controller.js';
+import { requireAuth } from '../middlewares/auth.middleware.js';
 
 // Límite estricto para frenar fuerza bruta / abuso sobre los endpoints de autenticación
 const authLimiter = rateLimit({
@@ -14,6 +15,8 @@ const authLimiter = rateLimit({
 const router = Router();
 router.post('/auth/registro-cognito', authLimiter, authController.registrarCognito);
 router.post('/auth/login', authLimiter, authController.login);
+router.post('/auth/callback', authLimiter, authController.manejarCallbackCognito);
+router.get('/auth/verify', requireAuth, authController.verificarSesion);
 router.post('/auth/logout', authController.logout);
 
 export default router;

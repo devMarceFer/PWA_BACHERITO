@@ -83,15 +83,11 @@ export class AuthCallbackComponent implements OnInit {
         return;
       }
 
-      // URL absoluta del backend: en desarrollo el frontend corre en :4201 y el backend en :3000,
-      // y no hay proxy configurado, por lo que una ruta relativa '/api/...' nunca llegaría al backend.
-      // Se envía también el redirect_uri usado en /oauth2/authorize: Cognito exige que sea idéntico
-      // al canjear el código.
-      const response = await this.http.get<RespuestaCallback>(`${environment.apiUrl}/auth/callback`, {
-        params: {
-          code,
-          redirect_uri: environment.cognito.oauth.redirectSignIn
-        }
+      // Enviar code y state al backend mediante POST para evitar exposición en logs/historial del navegador
+      const response = await this.http.post<RespuestaCallback>(`${environment.apiUrl}/auth/callback`, {
+        code,
+        state,
+        redirect_uri: environment.cognito.oauth.redirectSignIn
       }).toPromise();
 
       if (!response || !response.success) {
