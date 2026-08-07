@@ -60,6 +60,24 @@ export class AuthService {
     return this.autorizaciones().some((autorizacion) => autorizacion.modulo === modulo);
   }
 
+  // Indica si existe un JWT propio (emitido por nuestro backend) todavía vigente.
+  //
+  // Es la única señal de sesión válida para el login federado con Microsoft/Azure: en ese flujo
+  // los tokens los canjea el backend contra Cognito, nunca pasan por amazon-cognito-identity-js,
+  // así que userPool.getCurrentUser() devuelve null y CognitoService.sesionValida() daría false
+  // aunque la sesión sea perfectamente válida.
+  //
+  // La expiración se comprueba en cliente solo para decidir navegación; el backend sigue
+  // validando firma y vigencia del JWT en cada petición.
+  tieneTokenPropioValido(): boolean {
+    const token = this.appToken() ?? localStorage.getItem('appToken');
+    const expira = localStorage.getItem('appTokenExpira');
+    if (!token || !expira) return false;
+
+    const expiraEn = new Date(expira);
+    return !isNaN(expiraEn.getTime()) && new Date() < expiraEn;
+  }
+
   // Llamado por la pantalla de validación justo después de confirmar el código de Cognito,
   // para dar de alta al funcionario en RBAC_USUARIOS (requiere que la cédula exista en la
   // vista institucional de funcionarios; el backend rechaza el alta si no).
@@ -87,27 +105,47 @@ export class AuthService {
 
         return this.http.post<RespuestaLogin>(`${this.API_URL}/login`, {}, { headers }).pipe(
           tap((respuesta) => {
-            localStorage.setItem('isLoggedIn', 'true');
-            localStorage.setItem('userEmail', correo);
-            localStorage.setItem('userName', nombre);
-            localStorage.setItem('userPhone', telefono);
-            localStorage.setItem('userCedula', cedula);
-            localStorage.setItem('appToken', respuesta.token);
-            localStorage.setItem('appTokenExpira', respuesta.expiraEn);
-            localStorage.setItem('autorizaciones', JSON.stringify(respuesta.autorizaciones));
-
-            this.isLoggedIn.set(true);
-            this.usuarioActual.set(correo);
-            this.nombreActual.set(nombre);
-            this.telefonoActual.set(telefono);
-            this.cedulaActual.set(cedula);
-            this.appToken.set(respuesta.token);
-            this.autorizaciones.set(respuesta.autorizaciones);
+            this.guardarSesion({
+              email: correo,
+              nombre,
+              telefono,
+              cedulaUsuario: cedula,
+              token: respuesta.token,
+              expiraEn: respuesta.expiraEn,
+              autorizaciones: respuesta.autorizaciones
+            });
           }),
           map(() => true)
         );
       })
     );
+  }
+
+  guardarSesion(datos: {
+    email: string;
+    nombre: string;
+    telefono: string;
+    cedulaUsuario: string;
+    token: string;
+    expiraEn: string;
+    autorizaciones: Autorizacion[];
+  }) {
+    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('userEmail', datos.email);
+    localStorage.setItem('userName', datos.nombre);
+    localStorage.setItem('userPhone', datos.telefono);
+    localStorage.setItem('userCedula', datos.cedulaUsuario);
+    localStorage.setItem('appToken', datos.token);
+    localStorage.setItem('appTokenExpira', datos.expiraEn);
+    localStorage.setItem('autorizaciones', JSON.stringify(datos.autorizaciones));
+
+    this.isLoggedIn.set(true);
+    this.usuarioActual.set(datos.email);
+    this.nombreActual.set(datos.nombre);
+    this.telefonoActual.set(datos.telefono);
+    this.cedulaActual.set(datos.cedulaUsuario);
+    this.appToken.set(datos.token);
+    this.autorizaciones.set(datos.autorizaciones);
   }
 
   logout() {

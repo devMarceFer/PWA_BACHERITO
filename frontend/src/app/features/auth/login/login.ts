@@ -1,85 +1,124 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { AuthService, SinAccesoSateliteError } from '../../../core/services/auth.service';
-import { ButtonComponent } from '../../../shared/components/button/button.component';
-import { InputErrorComponent } from '../../../shared/components/message_error/msg_error.component';
+import { AuthService } from '../../../core/services/auth.service';
+import { environment } from '../../../../environments/environment';
 
+/**
+ * LoginComponent: Pantalla de acceso con dos opciones:
+ * 1. Iniciar sesión con Microsoft (Cognito/Azure)
+ * 2. Email + Contraseña (autenticación local)
+ *
+ * Flujo:
+ * - Microsoft: Redirige a Cognito → /auth/callback → /home
+ * - Email: POST /api/auth/login → genera JWT → /home
+ * - Crear cuenta: Click "Crea ahora" → /crear-cuenta
+ */
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    RouterLink,
-    MatIconModule,
-    ButtonComponent,
-    InputErrorComponent
-  ],
+  imports: [CommonModule, FormsModule, MatIconModule],
   templateUrl: './login.html'
 })
-
 export class LoginComponent {
-  private authService = inject(AuthService);  // Inyecta el servicio de autenticación
-  private router = inject(Router);            // Inyecta el enrutador
+  private router = inject(Router);
+  private authService = inject(AuthService);
 
-  usuario = signal('');                       // Señal para almacenar el usuario
-  contrasena = signal('');                    // Señal para la contraseña
-  errorLogin = signal<string | null>(null);   // Señal para mensajes de error
-  ocultarContrasena = signal(true);           // Señal para mostrar/ocultar contraseña
-  cargando = signal(false);                   // Señal para estado de carga
+  usuario = signal('');
+  contrasena = signal('');
+  ocultarContrasena = signal(true);
+  cargando = signal(false);
+  errorLogin = signal<string | null>(null);
 
-  toggleVisibilidad() { this.ocultarContrasena.update(v => !v); }
-
-  onSubmit(event?: Event) {
-    if (event) {
-      event.preventDefault(); // 🛑 Detiene la recarga física del navegador
-    }
-
-    if (!this.usuario() || !this.contrasena()) return;
-
-    this.cargando.set(true);        // Activa estado de carga
-    this.errorLogin.set(null);      // Limpia errores previos
-
-    this.authService.login(this.usuario(), this.contrasena()).subscribe
-    (
-      {
-        next: (success) => {
-          this.cargando.set(false);
-          if (success) {
-            this.router.navigate(['/home']); // Redirige al inicio
-          } else {
-            this.errorLogin.set('Credenciales incorrectas. Intenta de nuevo.');
-          }
-        },
-        error: (err) => {
-          console.error('Error al iniciar sesión en Cognito:', err);
-          this.cargando.set(false);
-
-          if (err instanceof SinAccesoSateliteError) {
-            alert('Aún no tienes acceso a este satélite. Contacta al administrador para que te asigne los permisos correspondientes.');
-            return;
-          }
-
-          this.errorLogin.set(this.mensajeError(err));
-        }
-      }
-    );
+  toggleVisibilidad() {
+    this.ocultarContrasena.update(v => !v);
   }
 
-  private mensajeError(err: any): string {
-    switch (err?.code) {
-      case 'UserNotConfirmedException':
-        return 'Tu cuenta aún no ha sido verificada. Revisa tu correo.';
-      case 'NotAuthorizedException':
-      case 'UserNotFoundException':
-        return 'Credenciales incorrectas. Intenta de nuevo.';
-      default:
-        // Errores propios del backend (bloqueado, inactivo, token inválido, etc.) llegan como
-        // HttpErrorResponse con { success:false, message } en el cuerpo.
-        return err?.error?.message || 'Ocurrió un error al conectar con el servidor.';
+  async loginConAzure() {
+    this.cargando.set(true);
+    this.errorLogin.set(null);
+
+    try {
+      // Redirigir directamente a Azure AD (federated login)
+      // El tenant, client_id y redirect_uri están configurados en Azure AD
+      this.iniciarSesionConAzure();
+    } catch (error) {
+      this.cargando.set(false);
+      this.errorLogin.set('Error al conectar con Microsoft. Intenta de nuevo.');
+      console.error('Error en loginConAzure:', error);
     }
+  }
+
+  onSubmit(event?: Event) {
+    if (event) event.preventDefault();
+    if (!this.usuario() || !this.contrasena()) return;
+
+    this.cargando.set(true);
+    this.errorLogin.set(null);
+
+    this.authService.login(this.usuario(), this.contrasena()).subscribe({
+      next: (success) => {
+        this.cargando.set(false);
+        if (success) {
+          this.router.navigate(['/home']);
+        } else {
+          this.errorLogin.set('Credenciales incorrectas. Intenta de nuevo.');
+        }
+      },
+      error: (err) => {
+        this.cargando.set(false);
+        this.errorLogin.set(err?.error?.message || 'Error al iniciar sesión.');
+      }
+    });
+  }
+
+  irACrearCuenta() {
+    this.router.navigate(['/crear-cuenta']);
+  }
+
+  private getCognitoDomain(): string {
+    return environment.cognito.oauth.domain;
+  }
+
+  private getCognitoClientId(): string {
+    return environment.cognito.clientId;
+  }
+
+  private getRedirectUri(): string {
+    // Debe coincidir EXACTAMENTE con una de las "Callback URLs" registradas en el App Client
+    // de Cognito y con el redirect_uri que el backend usa al canjear el código.
+    return encodeURIComponent(environment.cognito.oauth.redirectSignIn);
+  }
+
+  private iniciarSesionConAzure(): void {
+    // Flujo OAuth2 Authorization Code Grant contra Cognito, con federación a Azure AD.
+    //
+    // IMPORTANTE: no se debe ir directo a login.microsoftonline.com apuntando el redirect_uri
+    // al /oauth2/idpresponse de Cognito. Ese endpoint solo acepta un `state` generado por el
+    // propio Cognito (es donde viaja el app client y la callback URL original); con un state
+    // propio Cognito no sabe a dónde devolver al usuario y la autenticación falla.
+    // El punto de entrada correcto es /oauth2/authorize con identity_provider=<IdP de Azure>,
+    // que es quien redirige a Azure AD y luego devuelve el código a /auth/callback.
+
+    const domain = this.getCognitoDomain();
+    const clientId = this.getCognitoClientId();
+    const redirectUri = this.getRedirectUri();
+    const scope = encodeURIComponent('openid email profile');
+    const identityProvider = encodeURIComponent(environment.cognito.oauth.identityProvider);
+
+    // State para protección CSRF: se guarda para poder validarlo en /auth/callback
+    const state = this.generarState();
+    sessionStorage.setItem('oauth_state', state);
+
+    window.location.href =
+      `https://${domain}/oauth2/authorize?client_id=${clientId}&response_type=code&scope=${scope}&redirect_uri=${redirectUri}&identity_provider=${identityProvider}&state=${state}`;
+  }
+
+  private generarState(): string {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
   }
 }

@@ -1,0 +1,171 @@
+#!/usr/bin/env node
+
+/**
+ * Backend BACHERITO - Entry Point
+ * Script que inicia el servidor Express
+ *
+ * Uso:
+ *   npm start              (inicia en puerto del .env)
+ *   node bin/www           (igual)
+ *   PORT=3000 node bin/www (override puerto)
+ *
+ * Ambiente:
+ *   NODE_ENV=development   (logs verbose, sin SSL)
+ *   NODE_ENV=production    (logs minimal, con SSL si .crt/.key existen)
+ */
+
+import 'dotenv/config';
+import http from 'http';
+import https from 'https';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import app from '../src/app.js';
+import { closePool } from '../src/config/database.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const isDev = process.env.NODE_ENV !== 'production';
+
+// Configuración de puertos
+const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
+
+// Validar variables de entorno críticas para autenticación y BD
+const requiredEnvVars = [
+  'DB_USER',
+  'DB_PASSWORD',
+  'DB_CONNECTION_STRING',
+  'COGNITO_USER_POOL_ID',
+  'COGNITO_CLIENT_ID',
+  'COGNITO_DOMAIN',
+  'JWT_SECRET',
+  'SISTEMA_NOMBRE'
+];
+
+const missingVars = requiredEnvVars.filter(v => !process.env[v]);
+if (missingVars.length > 0) {
+  console.error(`❌ ERROR: Variables de entorno faltantes:`);
+  missingVars.forEach(v => console.error(`   - ${v}`));
+  console.error(`\nVerifica el archivo .env en la raíz del proyecto`);
+  process.exit(1);
+}
+
+// Crear servidor (HTTP o HTTPS)
+let server;
+const useSSL = process.env.USE_SSL === 'true' && !isDev;
+
+if (useSSL) {
+  // Leer certificados SSL
+  const certDir = path.join(__dirname, '..', 'ssl');
+  const certPath = path.join(certDir, 'server.crt');
+  const keyPath = path.join(certDir, 'server.key');
+  const intermediateCAPath = path.join(certDir, 'intermediate.crt');
+
+  if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
+    console.error(`❌ ERROR: Certificados SSL no encontrados`);
+    console.error(`   - Esperado: ${certPath}`);
+    console.error(`   - Esperado: ${keyPath}`);
+    console.error(`\nEn producción, usar Let's Encrypt en lugar de certificados autofirmados`);
+    process.exit(1);
+  }
+
+  const options = {
+    cert: fs.readFileSync(certPath),
+    key: fs.readFileSync(keyPath)
+  };
+
+  // Incluir cadena de certificados si existe (intermediate.crt)
+  if (fs.existsSync(intermediateCAPath)) {
+    options.ca = fs.readFileSync(intermediateCAPath);
+  }
+
+  server = https.createServer(options, app);
+  console.log(`🔒 Servidor HTTPS configurado`);
+} else {
+  server = http.createServer(app);
+  if (isDev) {
+    console.log(`🌐 Modo DESARROLLO: HTTP sin SSL`);
+  } else {
+    console.log(`ℹ️  En producción, usar Nginx con Let's Encrypt para SSL`);
+  }
+}
+
+/**
+ * Event listener para "error" event
+ */
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  const bind = typeof PORT === 'string' ? `Pipe ${PORT}` : `Port ${PORT}`;
+
+  // Handle específicos de errores
+  switch (error.code) {
+    case 'EACCES':
+      console.error(`❌ ${bind} requiere permisos elevados`);
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(`❌ ${bind} ya está en uso`);
+      console.error(`   Libera el puerto o usa: PORT=3001 npm start`);
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener para "listening" event
+ */
+function onListening() {
+  const protocol = useSSL ? 'https' : 'http';
+  const addr = server.address();
+  const bind = typeof addr === 'string' ? `pipe ${addr}` : `${protocol}://localhost:${addr.port}`;
+
+  console.log(`\n✅ Servidor iniciado:`);
+  console.log(`   URL: ${bind}`);
+  console.log(`   Health: ${bind}/health`);
+  console.log(`   API: ${bind}/api/*`);
+  console.log(`\n📝 Logs: Usa "pm2 logs backback" en producción\n`);
+
+  if (isDev) {
+    console.log(`💡 Tip: Instala el cliente: npm install -g pm2`);
+    console.log(`   Luego: pm2 start ecosystem.config.js\n`);
+  }
+}
+
+/**
+ * Graceful shutdown
+ */
+async function gracefulShutdown(signal) {
+  console.log(`\n🛑 ${signal} recibido, cerrando servidor gracefully...`);
+
+  server.close(async () => {
+    try {
+      await closePool();
+      console.log('✅ Pool de BD cerrado');
+    } catch (error) {
+      console.error('⚠️  Error cerrando pool:', error.message);
+    }
+    console.log('✅ Servidor cerrado');
+    process.exit(0);
+  });
+
+  // Forzar cierre después de 10 segundos
+  setTimeout(() => {
+    console.error('❌ Timeout esperando cierre, forzando exit');
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+/**
+ * Listen on provided port, on all network interfaces
+ */
+server.listen(PORT, HOST);
+server.on('error', onError);
+server.on('listening', onListening);

@@ -32,7 +32,34 @@ function resolverRedirectUri(req) {
     return ultimo;
 }
 
+// Mapa centralizado de códigos de error de autenticación
+const ERRORES_AUTH = {
+    'SIN_ACCESO_SATELITE': { status: 403, message: 'El usuario no tiene acceso a esta aplicación.' },
+    'SOLO_FUNCIONARIOS': { status: 403, message: 'Esta aplicación es exclusiva para funcionarios municipales.' },
+    'SIN_MODULOS_ASIGNADOS': { status: 403, message: 'Tu cuenta no tiene módulos asignados. Contacta al administrador.' },
+    'USUARIO_BLOQUEADO': { status: 403, message: 'El usuario se encuentra bloqueado.' },
+    'USUARIO_INACTIVO': { status: 403, message: 'El usuario se encuentra inactivo.' },
+    'SISTEMA_NO_CONFIGURADO': { status: 500, message: 'El sistema no está configurado correctamente.' },
+    'TOKEN_INVALIDO': { status: 401, message: 'El token de sesión no es válido o expiró.' },
+    'TOKEN_SIN_EMAIL': { status: 401, message: 'El token de sesión no es válido o expiró.' },
+    'USUARIO_NO_REGISTRADO': { status: 403, message: 'El usuario no está registrado en esta aplicación.' },
+    'ERROR_COGNITO': { status: 401, message: 'Error en la autenticación con Cognito. Intenta de nuevo.' }
+};
+
 class AuthController {
+    // Maneja errores de autenticación de forma centralizada
+    manejarErrorAuth(error, res, next) {
+        const errorConfig = ERRORES_AUTH[error.message];
+        if (errorConfig) {
+            return res.status(errorConfig.status).json({ success: false, message: errorConfig.message });
+        }
+        // Caso especial: errores de Cognito que incluyen texto específico
+        if (typeof error.message === 'string' && error.message.includes('intercambiar código')) {
+            const config = ERRORES_AUTH['ERROR_COGNITO'];
+            return res.status(config.status).json({ success: false, message: config.message });
+        }
+        next(error);
+    }
     async registrarCognito(req, res, next) {
         try {
             const datos = {
@@ -77,28 +104,7 @@ class AuthController {
 
             return res.status(200).json({ success: true, ...resultado });
         } catch (error) {
-            if (error.message === 'SIN_ACCESO_SATELITE') {
-                return res.status(403).json({ success: false, message: 'El usuario no tiene acceso a esta aplicación.' });
-            }
-            if (error.message === 'SOLO_FUNCIONARIOS') {
-                return res.status(403).json({ success: false, message: 'Esta aplicación es exclusiva para funcionarios municipales.' });
-            }
-            if (error.message === 'SIN_MODULOS_ASIGNADOS') {
-                return res.status(403).json({ success: false, message: 'Tu cuenta no tiene módulos asignados. Contacta al administrador.' });
-            }
-            if (error.message === 'USUARIO_BLOQUEADO') {
-                return res.status(403).json({ success: false, message: 'El usuario se encuentra bloqueado.' });
-            }
-            if (error.message === 'USUARIO_INACTIVO') {
-                return res.status(403).json({ success: false, message: 'El usuario se encuentra inactivo.' });
-            }
-            if (error.message === 'SISTEMA_NO_CONFIGURADO') {
-                return res.status(500).json({ success: false, message: 'El sistema no está configurado correctamente.' });
-            }
-            if (error.message === 'TOKEN_INVALIDO' || error.message === 'TOKEN_SIN_EMAIL') {
-                return res.status(401).json({ success: false, message: 'El token de sesión no es válido o expiró.' });
-            }
-            next(error);
+            this.manejarErrorAuth(error, res, next);
         }
     }
 
@@ -176,28 +182,7 @@ class AuthController {
                 ...resultado
             });
         } catch (error) {
-            if (error.message === 'SIN_ACCESO_SATELITE') {
-                return res.status(403).json({ success: false, message: 'El usuario no tiene acceso a esta aplicación.' });
-            }
-            if (error.message === 'SOLO_FUNCIONARIOS') {
-                return res.status(403).json({ success: false, message: 'Esta aplicación es exclusiva para funcionarios municipales.' });
-            }
-            if (error.message === 'SIN_MODULOS_ASIGNADOS') {
-                return res.status(403).json({ success: false, message: 'Tu cuenta no tiene módulos asignados. Contacta al administrador.' });
-            }
-            if (error.message === 'USUARIO_BLOQUEADO') {
-                return res.status(403).json({ success: false, message: 'El usuario se encuentra bloqueado.' });
-            }
-            if (error.message === 'USUARIO_INACTIVO') {
-                return res.status(403).json({ success: false, message: 'El usuario se encuentra inactivo.' });
-            }
-            if (error.message === 'TOKEN_INVALIDO' || error.message === 'TOKEN_SIN_EMAIL') {
-                return res.status(401).json({ success: false, message: 'El token de sesión no es válido o expiró.' });
-            }
-            if (typeof error.message === 'string' && error.message.includes('Fallo al intercambiar código')) {
-                return res.status(401).json({ success: false, message: 'Error en la autenticación con Cognito. Intenta de nuevo.' });
-            }
-            next(error);
+            this.manejarErrorAuth(error, res, next);
         }
     }
 }

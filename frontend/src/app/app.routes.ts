@@ -4,14 +4,11 @@ import { moduloGuard } from './core/guards/modulo.guard';
 
 export const routes: Routes = [
 
+  // ==================== Rutas públicas de autenticación ====================
+
   {
     path: '',
     loadComponent: () => import('./features/splash_screen/splash').then(m => m.SplashComponent)
-  },
-
-  {
-    path: 'bienvenida',
-    loadComponent: () => import('./features/auth/bienvenida/bienvenida').then(m => m.BienvenidaComponent)
   },
 
   {
@@ -20,7 +17,7 @@ export const routes: Routes = [
   },
 
   {
-    path: 'cognito/crear',
+    path: 'crear-cuenta',
     loadComponent: () => import('./features/cognito/crear/crear').then(m => m.CrearComponent)
   },
 
@@ -28,6 +25,15 @@ export const routes: Routes = [
     path: 'cognito/validar',
     loadComponent: () => import('./features/cognito/validar/validar').then(m => m.ValidarComponent)
   },
+
+  // Callback de Cognito: Cognito redirige aquí después de autenticar con Azure
+  // El componente aquí debe procesar el código de autorización y redirigir a /home o /login
+  {
+    path: 'auth/callback',
+    loadComponent: () => import('./features/cognito/callback/callback').then(m => m.AuthCallbackComponent)
+  },
+
+  // ==================== Rutas protegidas (requieren autenticación) ====================
 
   {
     path: 'home',

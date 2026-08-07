@@ -94,19 +94,16 @@ export class AuthCallbackComponent implements OnInit {
         throw new Error('Respuesta inválida del servidor');
       }
 
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('userEmail', response.usuario.email);
-      localStorage.setItem('userName', response.usuario.nombre);
-      localStorage.setItem('userCedula', response.usuario.idUsuario.toString());
-      localStorage.setItem('appToken', response.token);
-      localStorage.setItem('appTokenExpira', response.expiraEn);
-      localStorage.setItem('autorizaciones', JSON.stringify(response.autorizaciones));
-
-      this.authService.isLoggedIn.set(true);
-      this.authService.usuarioActual.set(response.usuario.email);
-      this.authService.nombreActual.set(response.usuario.nombre);
-      this.authService.appToken.set(response.token);
-      this.authService.autorizaciones.set(response.autorizaciones);
+      // Guardar sesión centralizadamente (también guarda en localStorage y signals)
+      this.authService.guardarSesion({
+        email: response.usuario.email,
+        nombre: response.usuario.nombre,
+        telefono: '', // El backend no devuelve teléfono en OAuth2 federado
+        cedulaUsuario: response.usuario.idUsuario.toString(), // Usar idUsuario como cédula
+        token: response.token,
+        expiraEn: response.expiraEn,
+        autorizaciones: response.autorizaciones
+      });
 
       await this.router.navigate(['/home']);
     } catch (error) {
